@@ -51,7 +51,7 @@ public class CPHInline
                     CPH.SetArgument("message", viewers[i]["userName"].ToString());
                     CPH.ExecuteMethod("MiniChat Method Collection", "CreateCustomEvent");
                     CPH.LogInfo("Новый зритель: " + viewers[i]["userName"].ToString());
-                    Thread.Sleep(200);
+                    Thread.Sleep(200); // если убрать задержку, то при большом количестве одновременно зашедших зрителей некоторые оповещения могут не отобразиться.
                 }
             }
         }
