@@ -3,7 +3,7 @@
 ///   Author:       NuboHeimer (https://live.vkvideo.ru/nuboheimer)
 ///   Email:        nuboheimer@yandex.ru
 ///   Telegram:     t.me/nuboheimer
-///   Version:      1.1.0
+///   Version:      1.1.1
 ///----------------------------------------------------------------------------
 using System;
 using System.Collections.Generic;
@@ -85,9 +85,10 @@ public class CPHInline
             List<string> lastTwitchViewersNameList = new List<string>();
             for (int i = 0; i < viewers.Count; i++)
             {
-                lastTwitchViewersNameList.Add(viewers[i]["userName"].ToString());
-                CPH.SetGlobalVar("lastTwitchViewersNameList", lastTwitchViewersNameList, true);
+                lastTwitchViewersNameList.Add(viewers[i]["userName"].ToString().ToLower());
             }
+
+            CPH.SetGlobalVar("lastTwitchViewersNameList", lastTwitchViewersNameList, true);
         }
         catch (Exception e)
         {
