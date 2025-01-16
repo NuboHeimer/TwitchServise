@@ -3,7 +3,7 @@
 ///   Author:       NuboHeimer (https://live.vkvideo.ru/nuboheimer)
 ///   Email:        nuboheimer@yandex.ru
 ///   Telegram:     t.me/nuboheimer
-///   Version:      1.1.1
+///   Version:      1.1.2
 ///----------------------------------------------------------------------------
 using System;
 using System.Collections.Generic;
@@ -37,18 +37,18 @@ public class CPHInline
             if (viewers.Count == 0)
             {
                 CPH.LogInfo("[TwitchService] Viewers not found.");
-                return true;
+                return false;
             }
 
-            for (int i = 0; i < viewers.Count; i++)
+            foreach(var viewer in viewers)
             {
-                if (!twitch_todays_viewers.Contains(viewers[i]["userName"].ToString()))
+                if (!twitch_todays_viewers.Contains(viewer["userName"].ToString()))
                 {
-                    twitch_todays_viewers.Add(viewers[i]["userName"].ToString());
+                    twitch_todays_viewers.Add(viewer["userName"].ToString());
                     CPH.SetGlobalVar("twitch_todays_viewers", twitch_todays_viewers, true);
                     CPH.SetArgument("service", "Twitch");
                     CPH.SetArgument("title", "Новый зритель");
-                    CPH.SetArgument("message", viewers[i]["userName"].ToString());
+                    CPH.SetArgument("message", viewer["userName"].ToString());
                     CPH.ExecuteMethod("MiniChat Method Collection", "CreateCustomEvent");
                     Thread.Sleep(200); // если убрать задержку, то при большом количестве одновременно зашедших зрителей некоторые оповещения могут не отобразиться.
                 }
@@ -79,16 +79,17 @@ public class CPHInline
             if (viewers.Count == 0)
             {
                 CPH.LogInfo("[TwitchService] Viewers not found.");
-                return true;
+                return false;
             }
 
             List<string> lastTwitchViewersNameList = new List<string>();
-            for (int i = 0; i < viewers.Count; i++)
+
+            foreach (var viewer in viewers)
             {
-                lastTwitchViewersNameList.Add(viewers[i]["userName"].ToString().ToLower());
+                lastTwitchViewersNameList.Add(viewer["userName"].ToString().ToLower());
             }
 
-            CPH.SetGlobalVar("lastTwitchViewersNameList", lastTwitchViewersNameList, true);
+            CPH.SetGlobalVar("lastTwitchViewersNameList", lastTwitchViewersNameList, false);
         }
         catch (Exception e)
         {
