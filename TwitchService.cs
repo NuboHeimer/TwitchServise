@@ -19,6 +19,12 @@ public class CPHInline
             CPH.SetGlobalVar("twitch_todays_viewers", new List<string>(), true);
             CPH.LogInfo("[TwitchService] Global variable twitch_todays_viewers created.");
         }
+
+        if (CPH.GetGlobalVar<List<string>>("lastTwitchViewersNameList", true) == null)
+        {
+            CPH.SetGlobalVar("lastTwitchViewersNameList", new List<string>(), true);
+            CPH.LogInfo("[TwitchService] Global variable lastTwitchViewersNameList created.");
+        }
     }
 
     public bool ClearTodaysViewers()
@@ -33,14 +39,14 @@ public class CPHInline
         try
         {
             CPH.LogInfo("[TwitchService] try to get new viewers");
-            var viewers = (List<Dictionary<string, object>>)args["users"];
-            if (viewers.Count == 0)
+            var currentViewers = (List<Dictionary<string, object>>)args["users"];
+            if (currentViewers.Count == 0)
             {
                 CPH.LogInfo("[TwitchService] Viewers not found.");
                 return false;
             }
 
-            foreach(var viewer in viewers)
+            foreach(var viewer in currentViewers)
             {
                 if (!twitch_todays_viewers.Contains(viewer["userName"].ToString()))
                 {
@@ -75,8 +81,8 @@ public class CPHInline
         try
         {
             CPH.LogInfo("[TwitchService] try to get viewers");
-            var viewers = (List<Dictionary<string, object>>)args["users"];
-            if (viewers.Count == 0)
+            var currentViewers = (List<Dictionary<string, object>>)args["users"];
+            if (currentViewers.Count == 0)
             {
                 CPH.LogInfo("[TwitchService] Viewers not found.");
                 return false;
@@ -84,7 +90,7 @@ public class CPHInline
 
             List<string> lastTwitchViewersNameList = new List<string>();
 
-            foreach (var viewer in viewers)
+            foreach (var viewer in currentViewers)
             {
                 lastTwitchViewersNameList.Add(viewer["userName"].ToString().ToLower());
             }
@@ -98,4 +104,11 @@ public class CPHInline
 
         return true;
     }
+
+        public bool ClearPresentViewersNameList()
+    {
+        CPH.SetGlobalVar("lastTwitchViewersNameList", new List<string>(), true);
+        return true;
+    }
+
 }
