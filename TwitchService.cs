@@ -3,7 +3,7 @@
 ///   Author:       NuboHeimer (https://live.vkvideo.ru/nuboheimer)
 ///   Email:        nuboheimer@yandex.ru
 ///   Telegram:     t.me/nuboheimer
-///   Version:      1.1.2
+///   Version:      1.2.0
 ///----------------------------------------------------------------------------
 using System;
 using System.Collections.Generic;
