@@ -20,10 +20,10 @@ public class CPHInline
             CPH.LogInfo("[TwitchService] Global variable twitch_todays_viewers created.");
         }
 
-        if (CPH.GetGlobalVar<List<string>>("lastTwitchViewersNameList", true) == null)
+        if (CPH.GetGlobalVar<List<string>>("twitchLastViewersNameList", true) == null)
         {
-            CPH.SetGlobalVar("lastTwitchViewersNameList", new List<string>(), true);
-            CPH.LogInfo("[TwitchService] Global variable lastTwitchViewersNameList created.");
+            CPH.SetGlobalVar("twitchLastViewersNameList", new List<string>(), true);
+            CPH.LogInfo("[TwitchService] Global variable twitchLastViewersNameList created.");
         }
     }
 
@@ -88,14 +88,14 @@ public class CPHInline
                 return false;
             }
 
-            List<string> lastTwitchViewersNameList = new List<string>();
+            List<string> twitchLastViewersNameList = new List<string>();
 
             foreach (var viewer in currentViewers)
             {
-                lastTwitchViewersNameList.Add(viewer["userName"].ToString().ToLower());
+                twitchLastViewersNameList.Add(viewer["userName"].ToString().ToLower());
             }
 
-            CPH.SetGlobalVar("lastTwitchViewersNameList", lastTwitchViewersNameList, false);
+            CPH.SetGlobalVar("twitchLastViewersNameList", twitchLastViewersNameList, false);
         }
         catch (Exception e)
         {
@@ -107,7 +107,7 @@ public class CPHInline
 
         public bool ClearPresentViewersNameList()
     {
-        CPH.SetGlobalVar("lastTwitchViewersNameList", new List<string>(), true);
+        CPH.SetGlobalVar("twitchLastViewersNameList", new List<string>(), true);
         return true;
     }
 
