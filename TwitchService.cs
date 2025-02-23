@@ -4,6 +4,7 @@
 ///   Email:        nuboheimer@yandex.ru
 ///   Telegram:     t.me/nuboheimer
 ///   Version:      1.2.0
+
 ///----------------------------------------------------------------------------
 using System;
 using System.Collections.Generic;
@@ -118,5 +119,32 @@ public class CPHInline
         CPH.SetGlobalVar("twitchLastViewersNameList", new List<string>(), true);
         return true;
 
+    }
+
+    public bool GetPresentViewersNameList()
+    {
+        try
+        {
+            CPH.LogInfo("[TwitchService] try to get viewers");
+            var viewers = (List<Dictionary<string, object>>)args["users"];
+            if (viewers.Count == 0)
+            {
+                CPH.LogInfo("[TwitchService] Viewers not found.");
+                return true;
+            }
+
+            List<string> lastTwitchViewersNameList = new List<string>();
+            for (int i = 0; i < viewers.Count; i++)
+            {
+                lastTwitchViewersNameList.Add(viewers[i]["userName"].ToString());
+                CPH.SetGlobalVar("lastTwitchViewersNameList", lastTwitchViewersNameList, true);
+            }
+        }
+        catch (Exception e)
+        {
+            CPH.LogError("[TwitchService] Some error was happend.");
+        }
+
+        return true;
     }
 }
