@@ -12,73 +12,60 @@ using System.Threading;
 
 public class CPHInline
 {
+
+    // TODO: добавить метод для удаления глобалки twitch_todays_viewers 
     public void Init()
     {
-        CPH.LogInfo("TwitchService started.");
-        if (CPH.GetGlobalVar<List<string>>("twitch_todays_viewers", true) == null)
+        CPH.LogInfo("[TwitchService] loaded.");
+        if (CPH.GetGlobalVar<List<string>>("twitchTodaysViewers", true) == null)
         {
-
-            CPH.SetGlobalVar("twitch_todays_viewers", new List<string>(), true);
-            CPH.LogInfo("[TwitchService] Global variable twitch_todays_viewers created.");
-
+            CPH.SetGlobalVar("twitchTodaysViewers", new List<string>(), true);
+            CPH.LogInfo("[TwitchService] Global variable twitchTodaysViewers created.");
         }
 
         if (CPH.GetGlobalVar<List<string>>("twitchLastViewersNameList", true) == null)
         {
-
             CPH.SetGlobalVar("twitchLastViewersNameList", new List<string>(), true);
             CPH.LogInfo("[TwitchService] Global variable twitchLastViewersNameList created.");
-
         }
     }
 
     public bool ClearTodaysViewers()
     {
-
-        CPH.SetGlobalVar("twitch_todays_viewers", new List<string>(), true);
+        CPH.SetGlobalVar("twitchTodaysViewers", new List<string>(), true);
         return true;
-
     }
 
     public bool GetNewViewers()
     {
-
-        List<string> twitch_todays_viewers = CPH.GetGlobalVar<List<string>>("twitch_todays_viewers", true);
+        List<string> twitchTodaysViewers = CPH.GetGlobalVar<List<string>>("twitchTodaysViewers", true);
         try
         {
-
             CPH.LogInfo("[TwitchService] try to get new viewers");
             var currentViewers = (List<Dictionary<string, object>>)args["users"];
             if (currentViewers.Count == 0)
             {
-
                 CPH.LogInfo("[TwitchService] Viewers not found.");
                 return false;
-
             }
 
             foreach (var viewer in currentViewers)
             {
-
-                if (!twitch_todays_viewers.Contains(viewer["userName"].ToString()))
+                if (!twitchTodaysViewers.Contains(viewer["userName"].ToString()))
                 {
-
-                    twitch_todays_viewers.Add(viewer["userName"].ToString());
-                    CPH.SetGlobalVar("twitch_todays_viewers", twitch_todays_viewers, true);
+                    twitchTodaysViewers.Add(viewer["userName"].ToString());
+                    CPH.SetGlobalVar("twitchTodaysViewers", twitchTodaysViewers, true);
                     CPH.SetArgument("service", "Twitch");
                     CPH.SetArgument("title", "Новый зритель");
                     CPH.SetArgument("message", viewer["userName"].ToString());
                     CPH.ExecuteMethod("MiniChat Method Collection", "CreateCustomEvent");
                     Thread.Sleep(200); // если убрать задержку, то при большом количестве одновременно зашедших зрителей некоторые оповещения могут не отобразиться.
-
                 }
             }
         }
         catch (Exception e)
         {
-
             CPH.LogError("[TwitchService] Some error was happend.");
-
         }
 
         return true;
@@ -86,47 +73,53 @@ public class CPHInline
 
     public bool AddFirstWordViewer()
     {
-
-        List<string> twitch_todays_viewers = CPH.GetGlobalVar<List<string>>("twitch_todays_viewers", true);
-        twitch_todays_viewers.Add(args["userName"].ToString());
-        CPH.SetGlobalVar("twitch_todays_viewers", twitch_todays_viewers, true);
+        List<string> twitchTodaysViewers = CPH.GetGlobalVar<List<string>>("twitchTodaysViewers", true);
+        twitchTodaysViewers.Add(args["userName"].ToString());
+        CPH.SetGlobalVar("twitchTodaysViewers", twitchTodaysViewers, true);
         return true;
-
     }
 
     public bool GetPresentViewersNameList()
     {
-
         try
         {
-
             CPH.LogInfo("[TwitchService] try to get viewers");
             var currentViewers = (List<Dictionary<string, object>>)args["users"];
             if (currentViewers.Count == 0)
             {
-
                 CPH.LogInfo("[TwitchService] Viewers not found.");
                 return false;
-
             }
 
             List<string> twitchLastViewersNameList = new List<string>();
 
             foreach (var viewer in currentViewers)
             {
-
                 twitchLastViewersNameList.Add(viewer["userName"].ToString().ToLower());
-
             }
 
             CPH.SetGlobalVar("twitchLastViewersNameList", twitchLastViewersNameList, false);
-
         }
         catch (Exception e)
         {
-
             CPH.LogError("[TwitchService] Some error was happend.");
+        }
 
+        return true;
+    }
+
+    public bool GetViewersCount()
+    {
+        try
+        {
+            CPH.LogInfo("[TwitchService] try to get viewers count");
+            var currentViewers = (List<Dictionary<string, object>>)args["users"];
+
+            CPH.SetGlobalVar("twitchViewersCount", currentViewers.Count, false);
+        }
+        catch (Exception e)
+        {
+            CPH.LogError("[TwitchService] Some error was happend.");
         }
 
         return true;
@@ -134,36 +127,7 @@ public class CPHInline
 
     public bool ClearPresentViewersNameList()
     {
-
         CPH.SetGlobalVar("twitchLastViewersNameList", new List<string>(), true);
-        return true;
-
-    }
-
-    public bool GetPresentViewersNameList()
-    {
-        try
-        {
-            CPH.LogInfo("[TwitchService] try to get viewers");
-            var viewers = (List<Dictionary<string, object>>)args["users"];
-            if (viewers.Count == 0)
-            {
-                CPH.LogInfo("[TwitchService] Viewers not found.");
-                return true;
-            }
-
-            List<string> lastTwitchViewersNameList = new List<string>();
-            for (int i = 0; i < viewers.Count; i++)
-            {
-                lastTwitchViewersNameList.Add(viewers[i]["userName"].ToString());
-                CPH.SetGlobalVar("lastTwitchViewersNameList", lastTwitchViewersNameList, true);
-            }
-        }
-        catch (Exception e)
-        {
-            CPH.LogError("[TwitchService] Some error was happend.");
-        }
-
         return true;
     }
 }
