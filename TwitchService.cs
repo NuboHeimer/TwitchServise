@@ -24,12 +24,6 @@ public class CPHInline
         }
     }
 
-    public bool ClearTodaysViewers()
-    {
-        CPH.SetGlobalVar("twitchTodaysViewers", new List<string>(), true);
-        return true;
-    }
-
     public bool GetNewViewers()
     {
         List<string> twitchTodaysViewers = CPH.GetGlobalVar<List<string>>("twitchTodaysViewers", true);
@@ -72,21 +66,21 @@ public class CPHInline
         CPH.SetGlobalVar("twitchTodaysViewers", twitchTodaysViewers, true);
         return true;
     }
-
-    public bool GetPresentViewersCount()
+    public bool ClearTodaysViewers()
     {
-        try
-        {
-            CPH.LogInfo("[TwitchService] try to get present viewers count");
-            var presentViewers = (List<Dictionary<string, object>>)args["users"];
+        CPH.SetGlobalVar("twitchTodaysViewers", new List<string>(), true);
+        return true;
+    }
 
-            CPH.SetGlobalVar("twitchPresentViewersCount", presentViewers.Count, false);
-        }
-        catch (Exception e)
-        {
-            CPH.LogError("[TwitchService] Some error was happend.");
-        }
+    public bool RemoveTwitchTodaysViewersVariable()
+    {
+        CPH.UnsetGlobalVar("twitch_todays_viewers", true);
+        return true;
+    }
 
+    public bool RemoveTwitchLastViewersNameListVariable()
+    {
+        CPH.UnsetGlobalVar("twitchLastViewersNameList", true);
         return true;
     }
 }
