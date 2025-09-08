@@ -12,15 +12,19 @@ using System.Threading;
 
 public class CPHInline
 {
-
-    // TODO: добавить метод для удаления глобалки twitch_todays_viewers и twitchLastViewersNameList.
     public void Init()
     {
-        CPH.LogInfo("[TwitchService] loaded.");
+        CPH.LogInfo("[TwitchService] initialized.");
         if (CPH.GetGlobalVar<List<string>>("twitchTodaysViewers", true) == null)
         {
             CPH.SetGlobalVar("twitchTodaysViewers", new List<string>(), true);
             CPH.LogInfo("[TwitchService] Global variable twitchTodaysViewers created.");
+        }
+
+        if (CPH.GetGlobalVar<List<string>>("twitchPreviousPresentViewers", true) == null)
+        {
+            CPH.SetGlobalVar("twitchPreviousPresentViewers", new List<string>(), true);
+            CPH.LogInfo("[TwitchService] Global variable twitchPreviousPresentViewers created.");
         }
     }
 
