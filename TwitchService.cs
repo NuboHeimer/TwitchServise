@@ -76,6 +76,18 @@ public class CPHInline
         return true;
     }
 
+    public bool ClearTodaysViewers()
+    {
+        CPH.SetGlobalVar("twitchTodaysViewers", new List<string>(), true);
+        return true;
+    }
+
+    public bool ClearPreviousPresentViewers()
+    {
+        CPH.SetGlobalVar("twitchPreviousPresentViewers", new List<string>(), true);
+        return true;
+    }
+
     public bool RemoveTwitchTodaysViewersVariable()
     {
         CPH.UnsetGlobalVar("twitch_todays_viewers", true);
