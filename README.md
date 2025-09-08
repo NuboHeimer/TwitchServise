@@ -1,35 +1,61 @@
+# TwitchService
+
+![GitHub Release](https://img.shields.io/github/v/release/NuboHeimer-for-streamers/TwitchService)
+[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+
 Модуль для streamer.bot, расширяющий функционал взаимодействия со стриминговой площадкой Twitch.
 
-При инициализации модуль проверяет наличие в стримерботе глобальной переменной **twitch_todays_viewers** и создаёт её, если она отсутствует. В дальшейшейм "новые" пользователи будут записываться в неё.
+## ⚠ Требования
 
-Для общего использования готовы функции:
+- streamer.bot 0.2.8. Работоспособность в версиях выше не гарантируется.
+- minichat 0.13.2.
+- интеграция между minichat и streamer.bot 0.1.5.
 
-- AddFirstWordViewer -- берёт имя пользователя из переменной **userName** и добавляет его в список **twitch_todays_viewers**. При использовании с триггером **FirstWord** позволяет добавить в список человека, который написал в чат до того, как его заметил PresentViewers.
-    
-- ClearTodayViewers -- позволяет очистить список новых зрителей. Вы можете вызывать его в любой удобный момент. У меня оно вызвыается по триггеру старта стрима.
-    
-- GetNewViewers -- получает текущий список зрителей, сравнивает его с переменной **twitch_todays_viewers**, дописывает в неё тех зрителей, которые там отсутствуют и отправляет в minichat по событию на каждого такого зрителя. Список зрителей берётся из переменной **viewers**, которая заполняется по встроенному в стримербот таймеру Presen Viewers (его надо специально включить в настройках)
-    
-- GetPresentViewersNameList -- получает текущий список зрителей и заносит их ники в lastTwitchViewersNameList. Список зрителей берётся из переменной **viewers**, которая заполняется по встроенному в стримербот таймеру Presen Viewers (его надо специально включить в настройках). Делалось для модуля RankiSystem.
+## 🎯 Возможности
 
-Полноценный гайд по настройке модуля можно найти тут: https://dzen.ru/a/ZcUZbAlgaiwIu30Q
+- Отправка в журнал событий minichat зрителя, впервые зашедшего на текущую трансляцию.
+- Отправка в журнал событий minichat зрителя, зашедшего на трансляцию.
+- Отправка в журнал событий minichat ушедшего зрителя.
+- Игнорирование зрителя, написавшего в чат, до того как модуль пометил его "новым".
+- Очистка списка "пришедших" зрителей.
 
-Зависимости:
+## 🚀 Как пользоваться
 
-  1. MiniChat: https://t.me/streamix_group/3
-  2. Streamer.bot: https://streamer.bot/
-  3. Итеграция миничата в стримербот: https://docs.play-code.ru/minichat
+### 1. Установка
 
-## License
-This project is licensed under the [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License](https://creativecommons.org/licenses/by-nc-sa/4.0/).  
-**You are free to:**
-- Share — copy and redistribute the code.
-- Adapt — modify, transform, and build upon the code.
+Следуйте подробному руководству: **[INSTALLATION.md](docs/INSTALLATION.md)**
 
-**Under the following terms:**
-- Attribution — You must give appropriate credit.
-- NonCommercial — You may not use the material for commercial purposes.
-- ShareAlike — If you remix or modify the code, you must distribute your contributions under the same license.
+### 2. Первые шаги
 
-See the [LICENSE](LICENSE) file for the full legal text.
-=======
+Изучите примеры использования: **[EXAMPLES.md](EXAMPLES.md)**
+
+## 🆘 Поддержка
+
+- **Автор**: NuboHeimer
+- **Личка Telegram**: [@nuboheimer](https://t.me/nuboheimer)
+- **Группа Telegram**: [@nuboheimersb](https://t.me/nuboheimersb/30)
+- **Email**: nuboheimer@yandex.ru
+- **VK**: [vk.com/nuboheimer](https://vk.com/nuboheimer)
+
+### Полезные ссылки
+
+- [Streamer.bot](https://streamer.bot/)
+- [Миничат](https://t.me/streamix_group/3)
+- [Интеграция](https://t.me/StreamfonyBot?start=_tgr_JpK_P4xlZmI6) находится по ссылке в разделе "Плагины". Ссылка реферальная.
+
+## 📄 Лицензия
+
+Этот проект распространяется под лицензией [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License](https://creativecommons.org/licenses/by-nc-sa/4.0/).
+
+**Вы можете:**
+
+- 🔄 **Делиться** — копировать и распространять код
+- 🔧 **Адаптировать** — изменять, трансформировать и улучшать код
+
+**При следующих условиях:**
+
+- 📝 **Атрибуция** — Вы должны указать авторство
+- 🚫 **Некоммерческое использование** — Материал нельзя использовать в коммерческих целях
+- 🔗 **ShareAlike** — При изменении кода Вы должны распространять его под той же лицензией
+
+Полный текст лицензии доступен в файле [LICENSE](LICENSE).
