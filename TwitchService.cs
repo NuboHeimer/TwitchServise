@@ -1,18 +1,25 @@
-///----------------------------------------------------------------------------
-///   Module:       Twitch Service
-///   Author:       NuboHeimer (https://live.vkvideo.ru/nuboheimer)
-///   Email:        nuboheimer@yandex.ru
-///   Help:         https://t.me/nuboheimersb/30
-///   Version:      1.2.0
-///----------------------------------------------------------------------------
+//============================================================================
+//   Module:       Twitch Service
+//   Author:       NuboHeimer (https://live.vkvideo.ru/nuboheimer)
+//   Email:        nuboheimer@yandex.ru
+//   Help:         https://t.me/nuboheimersb/30
+//   Version:      1.2.0
+//============================================================================
 
 using System;
 using System.Collections.Generic;
 using System.Threading;
 using System; //дублирование нужно, что бы при find refs стримербот добавил System.Core.dll, необходимый для HashSet. Иначе его надо добавлять руками. Я не знаю, почему это так работает.
 
+// ============================================================================
+// ОСНОВНОЙ КЛАСС CPHInline
+// ============================================================================
+
+// Содержит публичные методы для вызова из Streamer.bot
 public class CPHInline
 {
+    // Инициализация модуля
+    // Проверяет наличие глобальных переменных и создает их, если они отсутствуют.
     public void Init()
     {
         CPH.LogInfo("[TwitchService] initialized.");
@@ -28,6 +35,9 @@ public class CPHInline
             CPH.LogDebug("[TwitchService] Global variable twitchPreviousPresentViewers created.");
         }
     }
+    
+    // Получение новых зрителей
+    // Получает список текущих зрителей, добавляет их в список и отправляет событие в minichat.
 
     public bool GetNewViewers()
     {
@@ -60,6 +70,8 @@ public class CPHInline
         return true;
     }
 
+    //Получение пришедших и ушедших зрителей.
+    //Получает список текущих зрителей, сравнивает его с предыдущим списком и отправляет события в minichat.
     public bool GetInOutViewers()
     {
         HashSet<string> twitchPreviousPresentViewers = CPH.GetGlobalVar<HashSet<string>>("twitchPreviousPresentViewers", true);
@@ -107,6 +119,7 @@ public class CPHInline
         return true;
     }
 
+    //Добавление зрителя в списки новых и пришедших зрителей.
     public bool AddFirstWordViewer()
     {
         HashSet<string> twitchTodaysViewers = CPH.GetGlobalVar<HashSet<string>>("twitchTodaysViewers", true);
@@ -121,29 +134,37 @@ public class CPHInline
 
         return true;
     }
+
+    //Очистка списка новых зрителей.
     public bool ClearTodaysViewers()
     {
         CPH.SetGlobalVar("twitchTodaysViewers", new HashSet<string>(), true);
         return true;
     }
+
+    //Очистка кэшированного списка present viewers зрителей.
     public bool ClearPreviousPresentViewers()
     {
         CPH.SetGlobalVar("twitchPreviousPresentViewers", new HashSet<string>(), true);
         return true;
     }
 
+    //Удаление глобальной переменной twitch_todays_viewers.
     public bool RemoveTwitchTodaysViewersVariable()
     {
         CPH.UnsetGlobalVar("twitch_todays_viewers", true);
         return true;
     }
 
+    //Удаление глобальной переменной twitchLastViewersNameList.
     public bool RemoveTwitchLastViewersNameListVariable()
     {
         CPH.UnsetGlobalVar("twitchLastViewersNameList", true);
         return true;
     }
 
+    //Создание события в minichat.
+    //Создает событие в minichat с указанными параметрами.
     private void CreateViewerEvent(string viewerName, string eventType)
     {
         CPH.SetArgument("service", "Twitch");
