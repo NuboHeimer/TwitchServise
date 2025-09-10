@@ -1,15 +1,16 @@
 # TwitchService
 
-![GitHub Release](https://img.shields.io/github/v/release/NuboHeimer-for-streamers/TwitchService)
+[![GitHub Release](https://img.shields.io/github/v/release/NuboHeimer-for-streamers/TwitchService)](https://github.com/NuboHeimer-for-streamers/TwitchService/releases/latest)
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 
-Модуль для streamer.bot, расширяющий функционал взаимодействия со стриминговой площадкой Twitch.
+Модуль для [streamer.bot](https://streamer.bot), расширяющий функционал взаимодействия со стриминговой площадкой [Twitch](https://www.twitch.tv).
 
 ## ⚠ Требования
 
-- streamer.bot 0.2.8. Работоспособность в версиях выше не гарантируется.
-- minichat 0.13.2.
-- интеграция между minichat и streamer.bot 0.1.5.
+- [Streamer.bot 0.2.8](https://streamer.bot/) Работоспособность в версиях выше не гарантируется. Ссылка ведёт на официальный сайт стримербота. Нужную версию можно найти в разделе загрузок.
+- [Миничат 0.13.2](https://t.me/streamix_group/3). Ссылка ведёт на нужный раздел официальной группы в телеграм.
+- [Интеграция](https://t.me/StreamfonyBot?start=_tgr_JpK_P4xlZmI6) между minichat и streamer.bot 0.1.5. Ссылка реферальная. Ведёт на приложение в телеграм. Интеграция находится в разделе "Плагины".
+- [Прямая ссылка на интеграцию](https://t.me/StreamfonyBot/app?startapp=plugin_19-utm_share). (Ведёт в приложение телеграм).
 
 ## 🎯 Возможности
 
@@ -36,12 +37,6 @@
 - **Группа Telegram**: [@nuboheimersb](https://t.me/nuboheimersb/30)
 - **Email**: nuboheimer@yandex.ru
 - **VK**: [vk.com/nuboheimer](https://vk.com/nuboheimer)
-
-### Полезные ссылки
-
-- [Streamer.bot](https://streamer.bot/)
-- [Миничат](https://t.me/streamix_group/3)
-- [Интеграция](https://t.me/StreamfonyBot?start=_tgr_JpK_P4xlZmI6) находится по ссылке в разделе "Плагины". Ссылка реферальная.
 
 ## 📄 Лицензия
 
