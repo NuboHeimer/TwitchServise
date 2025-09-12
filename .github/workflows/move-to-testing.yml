@@ -35,7 +35,7 @@ jobs:
             // Получаем ID проекта и колонки "Testing"
             const projectQuery = `
               query {
-                user(login: "${context.repo.owner}") {
+                organization(login: "${context.repo.owner}") {
                   projectV2(number: 1) {
                     id
                     fields(first: 20) {
@@ -56,13 +56,13 @@ jobs:
             `;
 
             const projectData = await github.graphql(projectQuery);
-            const projectId = projectData.user.projectV2.id;
+            const projectId = projectData.organization.projectV2.id;
 
             // Находим колонку "Testing"
             let testingFieldId = null;
             let testingOptionId = null;
 
-            for (const field of projectData.user.projectV2.fields.nodes) {
+            for (const field of projectData.organization.projectV2.fields.nodes) {
               if (field.name === "Status" || field.name === "State") {
                 testingFieldId = field.id;
                 const testingOption = field.options.find(option => 
@@ -94,7 +94,7 @@ jobs:
                 // Ищем issue в проекте
                 const findItemQuery = `
                   query {
-                    user(login: "${context.repo.owner}") {
+                    organization(login: "${context.repo.owner}") {
                       projectV2(number: 1) {
                         items(first: 100) {
                           nodes {
@@ -112,7 +112,7 @@ jobs:
                 `;
                 
                 const projectItems = await github.graphql(findItemQuery);
-                const targetItem = projectItems.user.projectV2.items.nodes.find(item => 
+                const targetItem = projectItems.organization.projectV2.items.nodes.find(item => 
                   item.content && item.content.number === parseInt(issueNumber)
                 );
                 
