@@ -16,6 +16,7 @@ jobs:
       - name: Move Issues to Testing
         uses: actions/github-script@v6
         with:
+          github-token: ${{ secrets.PROJECT_TOKEN || secrets.GITHUB_TOKEN }}
           script: |
             const commits = context.payload.commits;
             const issueNumbers = new Set();
@@ -32,12 +33,13 @@ jobs:
               }
             });
 
-            // Получаем ID проекта и колонки "Testing"
+            // Получаем детали проекта номер 1 и колонки "Testing"
             const projectQuery = `
               query {
                 organization(login: "${context.repo.owner}") {
                   projectV2(number: 1) {
                     id
+                    title
                     fields(first: 20) {
                       nodes {
                         ... on ProjectV2SingleSelectField {
@@ -56,7 +58,15 @@ jobs:
             `;
 
             const projectData = await github.graphql(projectQuery);
+
+            if (!projectData.organization.projectV2) {
+              console.log("Project not found or no access to project #1");
+              console.log("Project data:", JSON.stringify(projectData, null, 2));
+              return;
+            }
+
             const projectId = projectData.organization.projectV2.id;
+            console.log(`Found project: ${projectData.organization.projectV2.title} (ID: ${projectId})`);
 
             // Находим колонку "Testing"
             let testingFieldId = null;
@@ -81,68 +91,19 @@ jobs:
               return;
             }
 
-            // Перемещаем каждое issue в колонку testing
+            // Добавляем label "testing" к каждому issue
             for (const issueNumber of issueNumbers) {
               try {
-                // Получаем информацию об issue
-                const issue = await github.rest.issues.get({
+                // Добавляем label "testing"
+                await github.rest.issues.addLabels({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
-                  issue_number: issueNumber
+                  issue_number: issueNumber,
+                  labels: ['testing']
                 });
                 
-                // Ищем issue в проекте
-                const findItemQuery = `
-                  query {
-                    organization(login: "${context.repo.owner}") {
-                      projectV2(number: 1) {
-                        items(first: 100) {
-                          nodes {
-                            id
-                            content {
-                              ... on Issue {
-                                number
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                `;
-                
-                const projectItems = await github.graphql(findItemQuery);
-                const targetItem = projectItems.organization.projectV2.items.nodes.find(item => 
-                  item.content && item.content.number === parseInt(issueNumber)
-                );
-                
-                if (!targetItem) {
-                  console.log(`Issue #${issueNumber} not found in project`);
-                  continue;
-                }
-                
-                // Устанавливаем статус "Testing"
-                const updateStatusMutation = `
-                  mutation {
-                    updateProjectV2ItemFieldValue(input: {
-                      projectId: "${projectId}",
-                      itemId: "${targetItem.id}",
-                      fieldId: "${testingFieldId}",
-                      value: {
-                        singleSelectOptionId: "${testingOptionId}"
-                      }
-                    }) {
-                      projectV2Item {
-                        id
-                      }
-                    }
-                  }
-                `;
-                
-                await github.graphql(updateStatusMutation);
-                
-                console.log(`Moved issue #${issueNumber} to testing column`);
+                console.log(`Added "testing" label to issue #${issueNumber}`);
               } catch (error) {
-                console.log(`Failed to move issue #${issueNumber}: ${error.message}`);
+                console.log(`Failed to add label to issue #${issueNumber}: ${error.message}`);
               }
             }
