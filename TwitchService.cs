@@ -124,14 +124,11 @@ public class CPHInline
     public bool AddFirstWordViewer()
     {
         HashSet<string> twitchTodaysViewers = CPH.GetGlobalVar<HashSet<string>>("twitchTodaysViewers", true);
-        HashSet<string> twitchPreviousPresentViewers = CPH.GetGlobalVar<HashSet<string>>("twitchPreviousPresentViewers", true);
         string userName = args["userName"].ToString();
 
         twitchTodaysViewers.Add(userName);
-        twitchPreviousPresentViewers.Add(userName);
 
         CPH.SetGlobalVar("twitchTodaysViewers", twitchTodaysViewers, true);
-        CPH.SetGlobalVar("twitchPreviousPresentViewers", twitchPreviousPresentViewers, true);
 
         return true;
     }
