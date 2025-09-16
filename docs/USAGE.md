@@ -13,6 +13,14 @@
 ![](./images/usage/Twitch_PresentViewers.png)
 
 ## Работа с экшенами.
+## \[Twitch] Add First Word Viewer
+![](./images/usage/Twitch_Add_First_Words_Viewer.png)
+Добавляет зрителя, написавшего в чат впервые за сегодняшнюю трансляцию, в спиок сегодняшних зрителе.
+
+Работает по триггеру **Twitch -> General -> First Words**.
+
+Нужен, чтобы для зрителей, написавших в чат, не приходило событие в миничат. Вы и так их уже увидели. Если событие всё равно нужно -- отключите экшен.
+
 ### \[Twitch] Clear Previous Present Viewers.
 ![](./images/usage/Twitch_Clear_Previous_Present_Viewers.png)
 Очищает сохранённый список Present Viewers.
