@@ -207,12 +207,16 @@ public class Internal
     public static bool AddFirstWordViewer(IInlineInvokeProxy CPH, IDictionary<string, object> args)
     {
         var logger = new Logger(CPH, LogPrefix);
-        var twitchTodaysViewers = CPH.GetGlobalVar<HashSet<string>>("twitchTodaysViewers", true);
         string userName = args["userName"].ToString();
+        var twitchTodaysViewers = CPH.GetGlobalVar<HashSet<string>>("twitchTodaysViewers", true);
+        var twitchPreviousPresentViewers = CPH.GetGlobalVar<HashSet<string>>("twitchPreviousPresentViewers", true);
 
         twitchTodaysViewers.Add(userName);
+        twitchPreviousPresentViewers.Add(userName);
+        logger.Debug("[AddFirstWordViewer] User added to todays and previous present viewers:", userName);
 
         CPH.SetGlobalVar("twitchTodaysViewers", twitchTodaysViewers, true);
+        CPH.SetGlobalVar("twitchPreviousPresentViewers", twitchPreviousPresentViewers, true);
 
         return true;
     }
