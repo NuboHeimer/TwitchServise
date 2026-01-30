@@ -40,7 +40,7 @@ public class CPHInline
     {
         return ErrorHandler(() =>
         {
-            return Internal.GetNewViewers(CPH, args);
+            return TwitchServiceInternal.GetNewViewers(CPH, args);
         });
     }
 
@@ -48,7 +48,7 @@ public class CPHInline
     {
         return ErrorHandler(() =>
         {
-            return Internal.GetInOutViewers(CPH, args);
+            return TwitchServiceInternal.GetInOutViewers(CPH, args);
         });
     }
 
@@ -56,7 +56,7 @@ public class CPHInline
     {
         return ErrorHandler(() =>
         {
-            return Internal.AddFirstWordViewer(CPH, args);
+            return TwitchServiceInternal.AddFirstWordViewer(CPH, args);
         });
     }
 
@@ -98,7 +98,7 @@ public class CPHInline
     }
 }
 
-public class Internal
+public class TwitchServiceInternal
 {
     private const string LogPrefix = "[TwitchService]: ";
 
@@ -246,11 +246,7 @@ public class Logger
 
     public void Verbose(string message, params object[] additional)
     {
-        string finalMessage = message;
-        foreach (var line in additional)
-        {
-            finalMessage += ", " + line;
-        }
+        var finalMessage = additional.Length > 0 ? $"{message}, {string.Join(", ", additional)}" : message;
         Verbose(finalMessage);
     }
 
@@ -262,11 +258,7 @@ public class Logger
 
     public void Debug(string message, params object[] additional)
     {
-        string finalMessage = message;
-        foreach (var line in additional)
-        {
-            finalMessage += ", " + line;
-        }
+        var finalMessage = additional.Length > 0 ? $"{message}, {string.Join(", ", additional)}" : message;
         Debug(finalMessage);
     }
 
@@ -278,11 +270,7 @@ public class Logger
 
     public void Info(string message, params object[] additional)
     {
-        string finalMessage = message;
-        foreach (var line in additional)
-        {
-            finalMessage += ", " + line;
-        }
+        var finalMessage = additional.Length > 0 ? $"{message}, {string.Join(", ", additional)}" : message;
         Info(finalMessage);
     }
 
@@ -294,11 +282,7 @@ public class Logger
 
     public void Warn(string message, params object[] additional)
     {
-        string finalMessage = message;
-        foreach (var line in additional)
-        {
-            finalMessage += ", " + line;
-        }
+        var finalMessage = additional.Length > 0 ? $"{message}, {string.Join(", ", additional)}" : message;
         Warn(finalMessage);
     }
 
@@ -310,11 +294,7 @@ public class Logger
 
     public void Error(string message, params object[] additional)
     {
-        string finalMessage = message;
-        foreach (var line in additional)
-        {
-            finalMessage += ", " + line;
-        }
+        var finalMessage = additional.Length > 0 ? $"{message}, {string.Join(", ", additional)}" : message;
         Error(finalMessage);
     }
 }
