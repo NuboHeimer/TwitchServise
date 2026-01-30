@@ -26,7 +26,6 @@ public class CPHInline
     // Проверяет наличие глобальных переменных и создает их, если они отсутствуют.
     public void Init()
     {
-        Logger.Info("initialized.");
         if (CPH.GetGlobalVar<HashSet<string>>("twitchTodaysViewers", true) == null)
         {
             CPH.SetGlobalVar("twitchTodaysViewers", new HashSet<string>(), true);
@@ -38,6 +37,7 @@ public class CPHInline
             CPH.SetGlobalVar("twitchPreviousPresentViewers", new HashSet<string>(), true);
             Logger.Debug("[TwitchService] Global variable twitchPreviousPresentViewers created.");
         }
+        Logger.Info("initialized.");
     }
 
     private bool ErrorHandler(Func<bool> action)
