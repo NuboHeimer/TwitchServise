@@ -182,3 +182,94 @@ public class CPHInline
     }
 }
 
+public class Logger
+{
+    private IInlineInvokeProxy cph;
+    private string prefix;
+
+    public Logger(IInlineInvokeProxy cph, string prefix)
+    {
+        this.cph = cph;
+        this.prefix = prefix;
+    }
+
+    public void Verbose(string message)
+    {
+        message = string.Format("{0} {1}", prefix, message);
+        cph.LogVerbose(message);
+    }
+
+    public void Verbose(string message, params object[] additional)
+    {
+        string finalMessage = message;
+        foreach (var line in additional)
+        {
+            finalMessage += ", " + line;
+        }
+        Verbose(finalMessage);
+    }
+
+    public void Debug(string message)
+    {
+        message = string.Format("{0} {1}", prefix, message);
+        cph.LogDebug(message);
+    }
+
+    public void Debug(string message, params object[] additional)
+    {
+        string finalMessage = message;
+        foreach (var line in additional)
+        {
+            finalMessage += ", " + line;
+        }
+        Debug(finalMessage);
+    }
+
+    public void Info(string message)
+    {
+        message = string.Format("{0} {1}", prefix, message);
+        cph.LogInfo(message);
+    }
+
+    public void Info(string message, params object[] additional)
+    {
+        string finalMessage = message;
+        foreach (var line in additional)
+        {
+            finalMessage += ", " + line;
+        }
+        Info(finalMessage);
+    }
+
+    public void Warn(string message)
+    {
+        message = string.Format("{0} {1}", prefix, message);
+        cph.LogWarn(message);
+    }
+
+    public void Warn(string message, params object[] additional)
+    {
+        string finalMessage = message;
+        foreach (var line in additional)
+        {
+            finalMessage += ", " + line;
+        }
+        Warn(finalMessage);
+    }
+
+    public void Error(string message)
+    {
+        message = string.Format("{0} {1}", prefix, message);
+        cph.LogError(message);
+    }
+
+    public void Error(string message, params object[] additional)
+    {
+        string finalMessage = message;
+        foreach (var line in additional)
+        {
+            finalMessage += ", " + line;
+        }
+        Error(finalMessage);
+    }
+}
