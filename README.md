@@ -3,34 +3,36 @@
 [![GitHub Release](https://img.shields.io/github/v/release/NuboHeimer-for-streamers/TwitchService)](https://github.com/NuboHeimer-for-streamers/TwitchService/releases/latest)
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 
-Модуль для [streamer.bot](https://streamer.bot), расширяющий функционал взаимодействия со стриминговой площадкой [Twitch](https://www.twitch.tv).
+Модуль для [Streamer.bot](https://streamer.bot), расширяющий функционал взаимодействия со стриминговой площадкой [Twitch](https://www.twitch.tv).
 
 ## ⚠ Требования
 
-- [Streamer.bot 0.2.8](https://streamer.bot/) Работоспособность в версиях выше не гарантируется. Ссылка ведёт на официальный сайт стримербота. Нужную версию можно найти в разделе загрузок.
-- [Миничат 0.13.2](https://t.me/streamix_group/3). Ссылка ведёт на нужный раздел официальной группы в телеграм.
-- [Интеграция](https://t.me/StreamfonyBot?start=_tgr_JpK_P4xlZmI6) между minichat и streamer.bot 0.1.5. Ссылка реферальная. Ведёт на приложение в телеграм. Интеграция находится в разделе "Плагины".
-- [Прямая ссылка на интеграцию](https://t.me/StreamfonyBot/app?startapp=plugin_19-utm_share). (Ведёт в приложение телеграм).
+- Актуальная версия [Streamer.bot](https://streamer.bot/) Ссылка ведёт на официальный сайт.
+- Актуальная версия [Миничат](https://t.me/streamix_group/3). Ссылка ведёт на нужный раздел официальной группы в Telegram.
+- **Интеграция Миничат → Streamer.bot**
+  - [Для Streamer.bot 0.2.8](https://t.me/StreamfonyBot?start=_tgr_JpK_P4xlZmI6) Ссылка реферальная. Ведёт на приложение в Telegram. Интеграция находится в разделе «Плагины».
+  - [Прямая ссылка на интеграцию для Streamer.bot 0.2.8](https://t.me/StreamfonyBot/app?startapp=plugin_19-utm_share). (Ведёт в приложение Telegram).
+  - Для Streamer.bot версий от 1.0.0 и выше вам нужна [моя версия интеграции](https://t.me/nuboheimersb/702/757), поскольку оригинальная с этими версиями работает некорректно.
 
 ## 🎯 Возможности
 
-![](./docs/images/readme/Event_log.png)
+![](docs/images/readme/Event_log.png)
 
-- Отправка в журнал событий minichat зрителя, впервые зашедшего на текущую трансляцию.
-- Отправка в журнал событий minichat зрителя, зашедшего на трансляцию.
-- Отправка в журнал событий minichat ушедшего зрителя.
+- Отправка в журнал событий Миничат зрителя, _впервые_ зашедшего на текущую трансляцию.
+- Отправка в журнал событий Миничат зрителя, появившегося в списке зрителей (пришёл в список).
+- Отправка в журнал событий Миничат ушедшего зрителя.
 - Игнорирование зрителя, написавшего в чат, до того как модуль пометил его "новым".
 - Очистка списка "пришедших" зрителей.
 
 ## 🚀 Быстрый старт
 
 ### Первая установка
-1. Импортируйте *TwitchService.txt* в streamer.bot.
-2. Настройте **Present Viewers** для twitch.
+1. Импортируйте *TwitchService.txt* в Streamer.bot.
+2. Настройте **Present Viewers** для Twitch.
 3. Настройте под себя условия очистки списков и включения экшенов.
 
 ### Обновление с версии 1.0.3.
-1. Импортируйте *TwitchService.txt* в streamer.bot.
+1. Импортируйте *TwitchService.txt* в Streamer.bot.
 2. Запустите два экшена через test trigger:
 - **\[Twitch] Remove twitch_todays_viewers**
 - **\[Twitch] Remove twitchLastViewersNameList**
