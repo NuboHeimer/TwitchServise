@@ -3,7 +3,7 @@
 //   Author:       NuboHeimer (https://live.vkvideo.ru/nuboheimer)
 //   Email:        nuboheimer@yandex.ru
 //   Help:         https://t.me/nuboheimersb/30
-//   Version:      1.2.0
+//   Version:      1.1.0
 //============================================================================
 
 using System;
