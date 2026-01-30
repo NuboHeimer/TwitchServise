@@ -99,7 +99,7 @@ public class CPHInline
 
             if (currentViewers.Count == 0)
             {
-                Logger..Debug("[GetInOutViewers] Viewers not found.");
+                Logger.Debug("[GetInOutViewers] Viewers not found.");
                 return false;
             }
 
@@ -191,19 +191,19 @@ public class CPHInline
 
 public class Logger
 {
-    private IInlineInvokeProxy cph;
-    private string prefix;
+    private readonly IInlineInvokeProxy _cph;
+    private readonly string _prefix;
 
     public Logger(IInlineInvokeProxy cph, string prefix)
     {
-        this.cph = cph;
-        this.prefix = prefix;
+        _cph = cph;
+        _prefix = prefix;
     }
 
     public void Verbose(string message)
     {
-        message = string.Format("{0} {1}", prefix, message);
-        cph.LogVerbose(message);
+        message = string.Format("{0} {1}", _prefix, message);
+        _cph.LogVerbose(message);
     }
 
     public void Verbose(string message, params object[] additional)
@@ -218,8 +218,8 @@ public class Logger
 
     public void Debug(string message)
     {
-        message = string.Format("{0} {1}", prefix, message);
-        cph.LogDebug(message);
+        message = string.Format("{0} {1}", _prefix, message);
+        _cph.LogDebug(message);
     }
 
     public void Debug(string message, params object[] additional)
@@ -234,8 +234,8 @@ public class Logger
 
     public void Info(string message)
     {
-        message = string.Format("{0} {1}", prefix, message);
-        cph.LogInfo(message);
+        message = string.Format("{0} {1}", _prefix, message);
+        _cph.LogInfo(message);
     }
 
     public void Info(string message, params object[] additional)
@@ -250,8 +250,8 @@ public class Logger
 
     public void Warn(string message)
     {
-        message = string.Format("{0} {1}", prefix, message);
-        cph.LogWarn(message);
+        message = string.Format("{0} {1}", _prefix, message);
+        _cph.LogWarn(message);
     }
 
     public void Warn(string message, params object[] additional)
@@ -266,8 +266,8 @@ public class Logger
 
     public void Error(string message)
     {
-        message = string.Format("{0} {1}", prefix, message);
-        cph.LogError(message);
+        message = string.Format("{0} {1}", _prefix, message);
+        _cph.LogError(message);
     }
 
     public void Error(string message, params object[] additional)
