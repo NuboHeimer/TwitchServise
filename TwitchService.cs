@@ -31,7 +31,7 @@ public class CPHInline
         if (CPH.GetGlobalVar<HashSet<string>>("twitchPreviousPresentViewers", true) == null)
         {
             CPH.SetGlobalVar("twitchPreviousPresentViewers", new HashSet<string>(), true);
-            Logger.Debug("[TwitchService] Global variable twitchPreviousPresentViewers created.");
+            Logger.Debug("Global variable twitchPreviousPresentViewers created.");
         }
         Logger.Info("initialized.");
     }
@@ -57,8 +57,6 @@ public class CPHInline
         });
     }
 
-    //Получение пришедших и ушедших зрителей.
-    //Получает список текущих зрителей, сравнивает его с предыдущим списком и отправляет события в minichat.
     public bool GetInOutViewers()
     {
         return ErrorHandler(() =>
@@ -67,56 +65,36 @@ public class CPHInline
         });
     }
 
-    //Добавление зрителя в списки новых и пришедших зрителей.
     public bool AddFirstWordViewer()
     {
-        HashSet<string> twitchTodaysViewers = CPH.GetGlobalVar<HashSet<string>>("twitchTodaysViewers", true);
-        string userName = args["userName"].ToString();
-
-        twitchTodaysViewers.Add(userName);
-
-        CPH.SetGlobalVar("twitchTodaysViewers", twitchTodaysViewers, true);
-
-        return true;
+        return ErrorHandler(() =>
+        {
+            return Internal.AddFirstWordViewer(CPH, args);
+        });
     }
 
-    //Очистка списка новых зрителей.
     public bool ClearTodaysViewers()
     {
         CPH.SetGlobalVar("twitchTodaysViewers", new HashSet<string>(), true);
         return true;
     }
 
-    //Очистка кэшированного списка present viewers зрителей.
     public bool ClearPreviousPresentViewers()
     {
         CPH.SetGlobalVar("twitchPreviousPresentViewers", new HashSet<string>(), true);
         return true;
     }
 
-    //Удаление глобальной переменной twitch_todays_viewers.
     public bool RemoveTwitchTodaysViewersVariable()
     {
         CPH.UnsetGlobalVar("twitch_todays_viewers", true);
         return true;
     }
 
-    //Удаление глобальной переменной twitchLastViewersNameList.
     public bool RemoveTwitchLastViewersNameListVariable()
     {
         CPH.UnsetGlobalVar("twitchLastViewersNameList", true);
         return true;
-    }
-
-    //Создание события в minichat.
-    //Создает событие в minichat с указанными параметрами.
-    private void CreateViewerEvent(string viewerName, string eventType)
-    {
-        CPH.SetArgument("service", "Twitch");
-        CPH.SetArgument("title", viewerName);
-        CPH.SetArgument("message", eventType);
-        CPH.ExecuteMethod("MiniChat Method Collection", "CreateCustomEvent");
-        Thread.Sleep(200); // если убрать задержку, то при большом количестве одновременно зашедших зрителей некоторые оповещения могут не отобразиться.
     }
 }
 
@@ -226,6 +204,18 @@ public class Internal
         return true;
     }
 
+    public static bool AddFirstWordViewer(IInlineInvokeProxy CPH, IDictionary<string, object> args)
+    {
+        var logger = new Logger(CPH, LogPrefix);
+        var twitchTodaysViewers = CPH.GetGlobalVar<HashSet<string>>("twitchTodaysViewers", true);
+        string userName = args["userName"].ToString();
+
+        twitchTodaysViewers.Add(userName);
+
+        CPH.SetGlobalVar("twitchTodaysViewers", twitchTodaysViewers, true);
+
+        return true;
+    }
     private static void CreateViewerEvent(IInlineInvokeProxy CPH, string viewerName, string eventType)
     {
         CPH.SetArgument("service", "Twitch");
