@@ -9,11 +9,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
-using System; //дублирование нужно, что бы при find refs стримербот добавил System.Core.dll, необходимый для HashSet. Иначе его надо добавлять руками. Я не знаю, почему это так работает.
-
-// ============================================================================
-// ОСНОВНОЙ КЛАСС CPHInline
-// ============================================================================
+using System; //дублирование нужно, чтобы при find refs стримербот добавил System.Core.dll, необходимый для HashSet. Иначе его надо добавлять руками. Я не знаю, почему это так работает.
 
 // Содержит публичные методы для вызова из Streamer.bot
 public class CPHInline
@@ -52,40 +48,14 @@ public class CPHInline
             return false;
         }
     }
-    
-    // Получение новых зрителей
-    // Получает список текущих зрителей, добавляет их в список и отправляет событие в minichat.
 
     public bool GetNewViewers()
+{
+    return ErrorHandler(() =>
     {
-        HashSet<string> twitchTodaysViewers = CPH.GetGlobalVar<HashSet<string>>("twitchTodaysViewers", true);
-        try
-        {
-            Logger.Debug("[GetNewViewers] try to get new viewers");
-            List<Dictionary<string, object>> currentViewers = (List<Dictionary<string, object>>)args["users"];
-            if (currentViewers.Count == 0)
-            {
-                Logger.Debug("[GetNewViewers] Viewers not found.");
-                return false;
-            }
-
-            foreach (var viewer in currentViewers)
-            {
-                if (!twitchTodaysViewers.Contains(viewer["userName"].ToString()))
-                {
-                    CreateViewerEvent(viewer["userName"].ToString(), "Зашел сегодня на трансляцию первый раз.");
-                    twitchTodaysViewers.Add(viewer["userName"].ToString());
-                }
-            }
-            CPH.SetGlobalVar("twitchTodaysViewers", twitchTodaysViewers, true);
-        }
-        catch (Exception e)
-        {
-            Logger.Error("[GetNewViewers] Some error was happened." + e.Message);
-        }
-
-        return true;
-    }
+        return Internal.GetNewViewers(CPH, args);
+    });
+}
 
     //Получение пришедших и ушедших зрителей.
     //Получает список текущих зрителей, сравнивает его с предыдущим списком и отправляет события в minichat.
@@ -180,6 +150,54 @@ public class CPHInline
     //Создание события в minichat.
     //Создает событие в minichat с указанными параметрами.
     private void CreateViewerEvent(string viewerName, string eventType)
+    {
+        CPH.SetArgument("service", "Twitch");
+        CPH.SetArgument("title", viewerName);
+        CPH.SetArgument("message", eventType);
+        CPH.ExecuteMethod("MiniChat Method Collection", "CreateCustomEvent");
+        Thread.Sleep(200); // если убрать задержку, то при большом количестве одновременно зашедших зрителей некоторые оповещения могут не отобразиться.
+    }
+}
+
+public class Internal
+{
+    private const string LogPrefix = "[TwitchService]: ";
+
+    public static bool GetNewViewers(IInlineInvokeProxy CPH, IDictionary<string, object> args)
+    {
+        var logger = new Logger(CPH, LogPrefix);
+
+        if (!args.ContainsKey("users"))
+        {
+            logger.Debug("[GetNewViewers] Viewers not found.");
+            return false;
+        }
+
+        var currentViewers = args["users"] as List<Dictionary<string, object>>;
+
+        if (currentViewers == null || currentViewers.Count == 0)
+        {
+            logger.Debug("[GetNewViewers] Viewers list is empty.");
+            return false;
+        }
+
+        var twitchTodaysViewers = CPH.GetGlobalVar<HashSet<string>>("twitchTodaysViewers", true);
+
+        logger.Debug("[GetNewViewers] try to get new viewers");
+        foreach (var viewer in currentViewers)
+        {
+            var userName = viewer["userName"].ToString();
+            if (!twitchTodaysViewers.Contains(userName))
+            {
+                CreateViewerEvent(CPH, userName, "Обнаружен(а) впервые на текущей трансляции.");
+                twitchTodaysViewers.Add(userName);
+            }
+        }
+        CPH.SetGlobalVar("twitchTodaysViewers", twitchTodaysViewers, true);
+        return true;
+    }
+
+    private static void CreateViewerEvent(IInlineInvokeProxy CPH, string viewerName, string eventType)
     {
         CPH.SetArgument("service", "Twitch");
         CPH.SetArgument("title", viewerName);
