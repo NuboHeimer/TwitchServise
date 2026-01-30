@@ -36,6 +36,15 @@ public class CPHInline
             CPH.LogDebug("[TwitchService] Global variable twitchPreviousPresentViewers created.");
         }
     }
+
+    private bool ErrorHandler(Func<bool> action) {
+        try {
+            return action();
+        } catch (Exception e) {
+            CPH.LogError($"[TwitchService] Error: {e.Message}");
+            return false;
+        }
+    }
     
     // Получение новых зрителей
     // Получает список текущих зрителей, добавляет их в список и отправляет событие в minichat.
@@ -172,3 +181,4 @@ public class CPHInline
         Thread.Sleep(200); // если убрать задержку, то при большом количестве одновременно зашедших зрителей некоторые оповещения могут не отобразиться.
     }
 }
+
