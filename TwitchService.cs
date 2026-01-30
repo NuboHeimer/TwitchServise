@@ -18,30 +18,37 @@ using System; //дублирование нужно, что бы при find ref
 // Содержит публичные методы для вызова из Streamer.bot
 public class CPHInline
 {
+    private Logger _logger;
+    private Logger Logger => _logger ??= new Logger(CPH, "[TwitchService]: ");
+
     // Инициализация модуля.
     // Запускается при компилляции кода.
     // Проверяет наличие глобальных переменных и создает их, если они отсутствуют.
     public void Init()
     {
-        CPH.LogInfo("[TwitchService] initialized.");
+        Logger.Info("initialized.");
         if (CPH.GetGlobalVar<HashSet<string>>("twitchTodaysViewers", true) == null)
         {
             CPH.SetGlobalVar("twitchTodaysViewers", new HashSet<string>(), true);
-            CPH.LogDebug("[TwitchService] Global variable twitchTodaysViewers created.");
+            Logger.Debug("Global variable twitchTodaysViewers created.");
         }
 
         if (CPH.GetGlobalVar<HashSet<string>>("twitchPreviousPresentViewers", true) == null)
         {
             CPH.SetGlobalVar("twitchPreviousPresentViewers", new HashSet<string>(), true);
-            CPH.LogDebug("[TwitchService] Global variable twitchPreviousPresentViewers created.");
+            Logger.Debug("[TwitchService] Global variable twitchPreviousPresentViewers created.");
         }
     }
 
-    private bool ErrorHandler(Func<bool> action) {
-        try {
+    private bool ErrorHandler(Func<bool> action)
+    {
+        try
+        {
             return action();
-        } catch (Exception e) {
-            CPH.LogError($"[TwitchService] Error: {e.Message}");
+        }
+        catch (Exception e)
+        {
+            Logger.Error("Error", e.Message);
             return false;
         }
     }
@@ -54,11 +61,11 @@ public class CPHInline
         HashSet<string> twitchTodaysViewers = CPH.GetGlobalVar<HashSet<string>>("twitchTodaysViewers", true);
         try
         {
-            CPH.LogDebug("[TwitchService][GetNewViewers] try to get new viewers");
+            Logger.Debug("[GetNewViewers] try to get new viewers");
             List<Dictionary<string, object>> currentViewers = (List<Dictionary<string, object>>)args["users"];
             if (currentViewers.Count == 0)
             {
-                CPH.LogDebug("[TwitchService][GetNewViewers] Viewers not found.");
+                Logger.Debug("[GetNewViewers] Viewers not found.");
                 return false;
             }
 
@@ -74,7 +81,7 @@ public class CPHInline
         }
         catch (Exception e)
         {
-            CPH.LogError("[TwitchService][GetNewViewers] Some error was happened." + e.Message);
+            Logger.Error("[GetNewViewers] Some error was happened." + e.Message);
         }
 
         return true;
@@ -87,12 +94,12 @@ public class CPHInline
         HashSet<string> twitchPreviousPresentViewers = CPH.GetGlobalVar<HashSet<string>>("twitchPreviousPresentViewers", true);
         try
         {
-            CPH.LogDebug("[TwitchService][GetInOutViewers] try to get viewers");
+            Logger.Debug("[GetInOutViewers] try to get viewers");
             List<Dictionary<string, object>> currentViewers = (List<Dictionary<string, object>>)args["users"];
 
             if (currentViewers.Count == 0)
             {
-                CPH.LogDebug("[TwitchService][GetInOutViewers] Viewers not found.");
+                Logger..Debug("[GetInOutViewers] Viewers not found.");
                 return false;
             }
 
@@ -123,7 +130,7 @@ public class CPHInline
         }
         catch (Exception e)
         {
-            CPH.LogError("[TwitchService][GetInOutViewers] Some error was happened." + e.Message);
+            Logger.Error("[GetInOutViewers] Some error was happened." + e.Message);
         }
 
         return true;
