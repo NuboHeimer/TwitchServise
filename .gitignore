@@ -1,3 +1,5 @@
 Examples/
 node_modules/
 .cursor
+.releaserc.json
+package.json
