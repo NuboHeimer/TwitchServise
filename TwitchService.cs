@@ -36,19 +36,6 @@ public class CPHInline
         Logger.Info("initialized.");
     }
 
-    private bool ErrorHandler(Func<bool> action)
-    {
-        try
-        {
-            return action();
-        }
-        catch (Exception e)
-        {
-            Logger.Error("Error", e.Message);
-            return false;
-        }
-    }
-
     public bool GetNewViewers()
     {
         return ErrorHandler(() =>
@@ -95,6 +82,19 @@ public class CPHInline
     {
         CPH.UnsetGlobalVar("twitchLastViewersNameList", true);
         return true;
+    }
+
+    private bool ErrorHandler(Func<bool> action)
+    {
+        try
+        {
+            return action();
+        }
+        catch (Exception e)
+        {
+            Logger.Error("Error", e.Message);
+            return false;
+        }
     }
 }
 
