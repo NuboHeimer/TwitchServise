@@ -50,60 +50,21 @@ public class CPHInline
     }
 
     public bool GetNewViewers()
-{
-    return ErrorHandler(() =>
     {
-        return Internal.GetNewViewers(CPH, args);
-    });
-}
+        return ErrorHandler(() =>
+        {
+            return Internal.GetNewViewers(CPH, args);
+        });
+    }
 
     //Получение пришедших и ушедших зрителей.
     //Получает список текущих зрителей, сравнивает его с предыдущим списком и отправляет события в minichat.
     public bool GetInOutViewers()
     {
-        HashSet<string> twitchPreviousPresentViewers = CPH.GetGlobalVar<HashSet<string>>("twitchPreviousPresentViewers", true);
-        try
+        return ErrorHandler(() =>
         {
-            Logger.Debug("[GetInOutViewers] try to get viewers");
-            List<Dictionary<string, object>> currentViewers = (List<Dictionary<string, object>>)args["users"];
-
-            if (currentViewers.Count == 0)
-            {
-                Logger.Debug("[GetInOutViewers] Viewers not found.");
-                return false;
-            }
-
-            HashSet<string> currentViewersNames = new HashSet<string>();
-
-            foreach (var viewer in currentViewers)
-            {
-                currentViewersNames.Add(viewer["userName"].ToString());
-            }
-
-            foreach (var viewerName in currentViewersNames)
-            {
-                if (!twitchPreviousPresentViewers.Contains(viewerName))
-                {
-                    CreateViewerEvent(viewerName, "Обнаружен(а) в списке зрителей.");
-                }
-            }
-
-            foreach (var previousViewer in twitchPreviousPresentViewers)
-            {
-                if (!currentViewersNames.Contains(previousViewer))
-                {
-                    CreateViewerEvent(previousViewer, "Пропал(а) из списка зрителей.");
-                }
-            }
-
-            CPH.SetGlobalVar("twitchPreviousPresentViewers", currentViewersNames, true);
-        }
-        catch (Exception e)
-        {
-            Logger.Error("[GetInOutViewers] Some error was happened." + e.Message);
-        }
-
-        return true;
+            return Internal.GetInOutViewers(CPH, args);
+        });
     }
 
     //Добавление зрителя в списки новых и пришедших зрителей.
@@ -194,6 +155,74 @@ public class Internal
             }
         }
         CPH.SetGlobalVar("twitchTodaysViewers", twitchTodaysViewers, true);
+        return true;
+    }
+
+    public static bool GetInOutViewers(IInlineInvokeProxy CPH, IDictionary<string, object> args)
+    {
+        var logger = new Logger(CPH, LogPrefix);
+        var twitchPreviousPresentViewers = CPH.GetGlobalVar<HashSet<string>>("twitchPreviousPresentViewers", true);
+        var twitchTodaysViewers = CPH.GetGlobalVar<HashSet<string>>("twitchTodaysViewers", true);
+
+        if (!args.ContainsKey("users"))
+        {
+            logger.Debug("[GetInOutViewers] Viewers not found.");
+            return false;
+        }
+
+        var currentViewers = args["users"] as List<Dictionary<string, object>>;
+        if (currentViewers == null || currentViewers.Count == 0)
+        {
+            logger.Debug("[GetInOutViewers] Viewers list is empty.");
+            return false;
+        }
+
+        logger.Debug("[GetInOutViewers] try to get viewers");
+
+        var currentViewersNames = new HashSet<string>();
+
+        foreach (var viewer in currentViewers)
+        {
+            currentViewersNames.Add(viewer["userName"].ToString());
+        }
+
+        var tempViewersNamesList = new HashSet<string>();
+        var currentViewersNamesForSaving = new HashSet<string>(currentViewersNames);
+
+        foreach (var viewerName in currentViewersNames)
+        {
+            if (!twitchTodaysViewers.Contains(viewerName))
+            {
+                CreateViewerEvent(CPH, viewerName, "Обнаружен(а) впервые на текущей трансляции.");
+                twitchTodaysViewers.Add(viewerName);
+                tempViewersNamesList.Add(viewerName);
+            }
+        }
+        CPH.SetGlobalVar("twitchTodaysViewers", twitchTodaysViewers, true);
+
+        foreach (var viewerName in tempViewersNamesList)
+        {
+            currentViewersNames.Remove(viewerName);
+        }
+
+        foreach (var viewerName in currentViewersNames)
+        {
+            if (!twitchPreviousPresentViewers.Contains(viewerName))
+            {
+                CreateViewerEvent(CPH, viewerName, "Обнаружен(а) в списке зрителей.");
+            }
+        }
+
+        foreach (var previousViewer in twitchPreviousPresentViewers)
+        {
+            if (!currentViewersNames.Contains(previousViewer))
+            {
+                CreateViewerEvent(CPH, previousViewer, "Пропал(а) из списка зрителей.");
+            }
+        }
+
+        CPH.SetGlobalVar("twitchPreviousPresentViewers", currentViewersNamesForSaving, true);
+
         return true;
     }
 
