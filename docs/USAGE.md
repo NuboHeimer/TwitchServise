@@ -11,7 +11,7 @@
 <p align="center">
   <img src="./images/usage/Platforms_Twitch_Settings.png" alt="Настройки Twitch в Streamer.bot">
 </p>
-2. В разделе **Present Viewers** установите галочки:
+2. В разделе `Present Viewers` установите галочки:
 
 - Enabled,
 - Live Update.  
