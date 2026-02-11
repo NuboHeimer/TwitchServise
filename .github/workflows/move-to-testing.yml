@@ -1,0 +1,164 @@
+name: Move Issues to Testing
+
+on:
+  push:
+    branches: [dev]
+
+jobs:
+  move-issues:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Move Issues to Testing
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.PROJECT_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            const commits = context.payload.commits;
+            const issueNumbers = new Set();
+
+            // Парсим коммиты на наличие ключевых слов
+            commits.forEach(commit => {
+              const message = commit.message;
+              const matches = message.match(/(fixes?|closes?|resolves?)\s+#(\d+)/gi);
+              if (matches) {
+                matches.forEach(match => {
+                  const issueNumber = match.match(/#(\d+)/)[1];
+                  issueNumbers.add(issueNumber);
+                });
+              }
+            });
+
+            // Получаем детали проекта номер 1 и колонки "Testing"
+            const projectQuery = `
+              query {
+                organization(login: "${context.repo.owner}") {
+                  projectV2(number: 1) {
+                    id
+                    title
+                    fields(first: 20) {
+                      nodes {
+                        ... on ProjectV2SingleSelectField {
+                          id
+                          name
+                          options {
+                            id
+                            name
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            `;
+
+            const projectData = await github.graphql(projectQuery);
+
+            if (!projectData.organization.projectV2) {
+              console.log("❌ Project not found or no access to project #1");
+              console.log("Project data:", JSON.stringify(projectData, null, 2));
+              return;
+            }
+
+            const projectId = projectData.organization.projectV2.id;
+            console.log(`✅ Found project: ${projectData.organization.projectV2.title} (ID: ${projectId})`);
+
+            // Находим колонку "Testing"
+            let testingFieldId = null;
+            let testingOptionId = null;
+
+            console.log("Available fields:", projectData.organization.projectV2.fields.nodes.map(f => f.name));
+
+            for (const field of projectData.organization.projectV2.fields.nodes) {
+              console.log(`Checking field: ${field.name}`);
+              if (field.name === "Status" || field.name === "State" || field.name === "Status (Project)") {
+                testingFieldId = field.id;
+                console.log(`Found status field: ${field.name} (ID: ${field.id})`);
+                console.log("Available options:", field.options.map(o => o.name));
+                
+                const testingOption = field.options.find(option => 
+                  option.name.toLowerCase().includes("testing") || 
+                  option.name.toLowerCase().includes("test") ||
+                  option.name.toLowerCase().includes("в тестировании")
+                );
+                if (testingOption) {
+                  testingOptionId = testingOption.id;
+                  console.log(`Found testing option: ${testingOption.name} (ID: ${testingOption.id})`);
+                  break;
+                }
+              }
+            }
+
+            if (!testingFieldId || !testingOptionId) {
+              console.log("❌ Testing column not found in project");
+              console.log("Available fields:", projectData.organization.projectV2.fields.nodes);
+              return;
+            }
+
+            // Перемещаем каждое issue в колонку testing
+            for (const issueNumber of issueNumbers) {
+              try {
+                console.log(`🔄 Processing issue #${issueNumber}`);
+                
+                // Ищем issue в проекте
+                const findItemQuery = `
+                  query {
+                    organization(login: "${context.repo.owner}") {
+                      projectV2(number: 1) {
+                        items(first: 100) {
+                          nodes {
+                            id
+                            content {
+                              ... on Issue {
+                                number
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                `;
+                
+                const projectItems = await github.graphql(findItemQuery);
+                const targetItem = projectItems.organization.projectV2.items.nodes.find(item => 
+                  item.content && item.content.number === parseInt(issueNumber)
+                );
+                
+                if (!targetItem) {
+                  console.log(`❌ Issue #${issueNumber} not found in project`);
+                  continue;
+                }
+                
+                console.log(`✅ Found issue #${issueNumber} in project (Item ID: ${targetItem.id})`);
+                
+                // Устанавливаем статус "Testing"
+                const updateStatusMutation = `
+                  mutation {
+                    updateProjectV2ItemFieldValue(input: {
+                      projectId: "${projectId}",
+                      itemId: "${targetItem.id}",
+                      fieldId: "${testingFieldId}",
+                      value: {
+                        singleSelectOptionId: "${testingOptionId}"
+                      }
+                    }) {
+                      projectV2Item {
+                        id
+                      }
+                    }
+                  }
+                `;
+                
+                await github.graphql(updateStatusMutation);
+                
+                console.log(`✅ Moved issue #${issueNumber} to testing column`);
+              } catch (error) {
+                console.log(`❌ Failed to move issue #${issueNumber}: ${error.message}`);
+              }
+            }
