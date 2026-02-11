@@ -91,14 +91,6 @@
   <img src="./images/usage/Twitch_Get_In_Out_Viewers.png" alt="Экшен Get In Out Viewers">
 </p>
 
-<p align="center">
-  <img src="./images/usage/User_join.png" alt="Пример события о заходе зрителя">
-</p>
-
-<p align="center">
-  <img src="./images/usage/User_left.png" alt="Пример события об уходе зрителя">
-</p>
-
 - Триггер: **Twitch -> Present Viewers**
 - Пишет, когда зритель впервые зашёл на трансляцию.
 - Пишет, когда зритель просто появился в списке зрителей (пришёл на трансляцию).
