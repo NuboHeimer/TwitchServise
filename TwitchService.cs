@@ -11,53 +11,37 @@ using System.Collections.Generic;
 using System.Threading;
 using System; //дублирование нужно, чтобы при find refs стримербот добавил System.Core.dll, необходимый для HashSet. Иначе его надо добавлять руками. Я не знаю, почему это так работает.
 
-// Содержит публичные методы для вызова из Streamer.bot
 public class CPHInline
 {
-    private Logger _logger;
-    private Logger Logger => _logger ??= new Logger(CPH, "[TwitchService]: ");
-
-    // Инициализация модуля.
-    // Запускается при компилляции кода.
-    // Проверяет наличие глобальных переменных и создает их, если они отсутствуют.
     public void Init()
     {
         if (CPH.GetGlobalVar<HashSet<string>>("twitchTodaysViewers", true) == null)
         {
             CPH.SetGlobalVar("twitchTodaysViewers", new HashSet<string>(), true);
-            Logger.Debug("Global variable twitchTodaysViewers created.");
+            CPH.LogDebug("[TwitchService]: Global variable twitchTodaysViewers created.");
         }
 
         if (CPH.GetGlobalVar<HashSet<string>>("twitchPreviousPresentViewers", true) == null)
         {
             CPH.SetGlobalVar("twitchPreviousPresentViewers", new HashSet<string>(), true);
-            Logger.Debug("Global variable twitchPreviousPresentViewers created.");
+            CPH.LogDebug("[TwitchService]: Global variable twitchPreviousPresentViewers created.");
         }
-        Logger.Info("initialized.");
+        CPH.LogInfo("[TwitchService]: initialized.");
     }
 
     public bool GetNewViewers()
     {
-        return ErrorHandler(() =>
-        {
-            return TwitchServiceInternal.GetNewViewers(CPH, args);
-        });
+        return TwitchServiceInternal.GetNewViewers(CPH);
     }
 
     public bool GetInOutViewers()
     {
-        return ErrorHandler(() =>
-        {
-            return TwitchServiceInternal.GetInOutViewers(CPH, args);
-        });
+        return TwitchServiceInternal.GetInOutViewers(CPH);
     }
 
     public bool AddFirstWordViewer()
     {
-        return ErrorHandler(() =>
-        {
-            return TwitchServiceInternal.AddFirstWordViewer(CPH, args);
-        });
+        return TwitchServiceInternal.AddFirstWordViewer(CPH);
     }
 
     public bool ClearTodaysViewers()
@@ -83,139 +67,150 @@ public class CPHInline
         CPH.UnsetGlobalVar("twitchLastViewersNameList", true);
         return true;
     }
-
-    private bool ErrorHandler(Func<bool> action)
-    {
-        try
-        {
-            return action();
-        }
-        catch (Exception e)
-        {
-            Logger.Error("Error", e.Message);
-            return false;
-        }
-    }
 }
 
 public class TwitchServiceInternal
 {
     private const string LogPrefix = "[TwitchService]: ";
 
-    public static bool GetNewViewers(IInlineInvokeProxy CPH, IDictionary<string, object> args)
+    public static bool GetNewViewers(IInlineInvokeProxy CPH)
     {
-        var logger = new Logger(CPH, LogPrefix);
-
-        if (!args.ContainsKey("users"))
+        try
         {
-            logger.Debug("[GetNewViewers] Viewers not found.");
-            return false;
-        }
-
-        var currentViewers = args["users"] as List<Dictionary<string, object>>;
-
-        if (currentViewers == null || currentViewers.Count == 0)
-        {
-            logger.Debug("[GetNewViewers] Viewers list is empty.");
-            return false;
-        }
-
-        var twitchTodaysViewers = CPH.GetGlobalVar<HashSet<string>>("twitchTodaysViewers", true);
-
-        logger.Debug("[GetNewViewers] try to get new viewers");
-        foreach (var viewer in currentViewers)
-        {
-            var userName = viewer["userName"].ToString();
-            if (!twitchTodaysViewers.Contains(userName))
+            if (!CPH.TryGetArg("users", out object usersObj))
             {
-                CreateViewerEvent(CPH, userName, "Обнаружен(а) впервые на текущей трансляции.");
-                twitchTodaysViewers.Add(userName);
+                CPH.LogDebug($"{LogPrefix} [GetNewViewers] Viewers not found (argument 'users' is missing).");
+                return false;
             }
+
+            var currentViewers = usersObj as List<Dictionary<string, object>>;
+
+            if (currentViewers == null || currentViewers.Count == 0)
+            {
+                CPH.LogDebug($"{LogPrefix} [GetNewViewers] Viewers list is empty.");
+                return false;
+            }
+
+            var twitchTodaysViewers = CPH.GetGlobalVar<HashSet<string>>("twitchTodaysViewers", true);
+
+            CPH.LogDebug($"{LogPrefix} [GetNewViewers] Try to get new viewers.");
+            foreach (var viewer in currentViewers)
+            {
+                var userName = viewer["userName"].ToString();
+                if (!twitchTodaysViewers.Contains(userName))
+                {
+                    CreateViewerEvent(CPH, userName, "Обнаружен(а) впервые на текущей трансляции.");
+                    twitchTodaysViewers.Add(userName);
+                }
+            }
+            CPH.SetGlobalVar("twitchTodaysViewers", twitchTodaysViewers, true);
+            return true;
         }
-        CPH.SetGlobalVar("twitchTodaysViewers", twitchTodaysViewers, true);
-        return true;
+        catch (Exception e)
+        {
+            CPH.LogError($"{LogPrefix} [GetNewViewers] Error, {e.Message}");
+            return false;
+        }
     }
 
-    public static bool GetInOutViewers(IInlineInvokeProxy CPH, IDictionary<string, object> args)
+    public static bool GetInOutViewers(IInlineInvokeProxy CPH)
     {
-        var logger = new Logger(CPH, LogPrefix);
-        var twitchPreviousPresentViewers = CPH.GetGlobalVar<HashSet<string>>("twitchPreviousPresentViewers", true);
-        var twitchTodaysViewers = CPH.GetGlobalVar<HashSet<string>>("twitchTodaysViewers", true);
-
-        if (!args.ContainsKey("users"))
+        try
         {
-            logger.Debug("[GetInOutViewers] Viewers not found.");
+            var twitchPreviousPresentViewers = CPH.GetGlobalVar<HashSet<string>>("twitchPreviousPresentViewers", true);
+            var twitchTodaysViewers = CPH.GetGlobalVar<HashSet<string>>("twitchTodaysViewers", true);
+
+            if (!CPH.TryGetArg("users", out object usersObj))
+            {
+                CPH.LogDebug($"{LogPrefix} [GetInOutViewers] Viewers not found (argument 'users' is missing).");
+                return false;
+            }
+
+            var currentViewers = usersObj as List<Dictionary<string, object>>;
+            if (currentViewers == null || currentViewers.Count == 0)
+            {
+                CPH.LogDebug($"{LogPrefix} [GetInOutViewers] Viewers list is empty.");
+                return false;
+            }
+
+            CPH.LogDebug($"{LogPrefix} [GetInOutViewers] Try to get viewers.");
+
+            var currentViewersNames = new HashSet<string>();
+
+            foreach (var viewer in currentViewers)
+            {
+                currentViewersNames.Add(viewer["userName"].ToString());
+            }
+
+            var tempViewersNamesList = new HashSet<string>();
+            var currentViewersNamesForSaving = new HashSet<string>(currentViewersNames);
+
+            foreach (var viewerName in currentViewersNames)
+            {
+                if (!twitchTodaysViewers.Contains(viewerName))
+                {
+                    CreateViewerEvent(CPH, viewerName, "Обнаружен(а) впервые на текущей трансляции.");
+                    twitchTodaysViewers.Add(viewerName);
+                    tempViewersNamesList.Add(viewerName);
+                }
+            }
+            CPH.SetGlobalVar("twitchTodaysViewers", twitchTodaysViewers, true);
+
+            foreach (var viewerName in tempViewersNamesList)
+            {
+                currentViewersNames.Remove(viewerName);
+            }
+
+            foreach (var viewerName in currentViewersNames)
+            {
+                if (!twitchPreviousPresentViewers.Contains(viewerName))
+                {
+                    CreateViewerEvent(CPH, viewerName, "Обнаружен(а) в списке зрителей.");
+                }
+            }
+
+            foreach (var previousViewer in twitchPreviousPresentViewers)
+            {
+                if (!currentViewersNames.Contains(previousViewer))
+                {
+                    CreateViewerEvent(CPH, previousViewer, "Пропал(а) из списка зрителей.");
+                }
+            }
+
+            CPH.SetGlobalVar("twitchPreviousPresentViewers", currentViewersNamesForSaving, true);
+
+            return true;
+        }
+        catch (Exception e)
+        {
+            CPH.LogError($"{LogPrefix} [GetInOutViewers] Error, {e.Message}");
             return false;
         }
-
-        var currentViewers = args["users"] as List<Dictionary<string, object>>;
-        if (currentViewers == null || currentViewers.Count == 0)
-        {
-            logger.Debug("[GetInOutViewers] Viewers list is empty.");
-            return false;
-        }
-
-        logger.Debug("[GetInOutViewers] try to get viewers");
-
-        var currentViewersNames = new HashSet<string>();
-
-        foreach (var viewer in currentViewers)
-        {
-            currentViewersNames.Add(viewer["userName"].ToString());
-        }
-
-        var tempViewersNamesList = new HashSet<string>();
-        var currentViewersNamesForSaving = new HashSet<string>(currentViewersNames);
-
-        foreach (var viewerName in currentViewersNames)
-        {
-            if (!twitchTodaysViewers.Contains(viewerName))
-            {
-                CreateViewerEvent(CPH, viewerName, "Обнаружен(а) впервые на текущей трансляции.");
-                twitchTodaysViewers.Add(viewerName);
-                tempViewersNamesList.Add(viewerName);
-            }
-        }
-        CPH.SetGlobalVar("twitchTodaysViewers", twitchTodaysViewers, true);
-
-        foreach (var viewerName in tempViewersNamesList)
-        {
-            currentViewersNames.Remove(viewerName);
-        }
-
-        foreach (var viewerName in currentViewersNames)
-        {
-            if (!twitchPreviousPresentViewers.Contains(viewerName))
-            {
-                CreateViewerEvent(CPH, viewerName, "Обнаружен(а) в списке зрителей.");
-            }
-        }
-
-        foreach (var previousViewer in twitchPreviousPresentViewers)
-        {
-            if (!currentViewersNames.Contains(previousViewer))
-            {
-                CreateViewerEvent(CPH, previousViewer, "Пропал(а) из списка зрителей.");
-            }
-        }
-
-        CPH.SetGlobalVar("twitchPreviousPresentViewers", currentViewersNamesForSaving, true);
-
-        return true;
     }
 
-    public static bool AddFirstWordViewer(IInlineInvokeProxy CPH, IDictionary<string, object> args)
+    public static bool AddFirstWordViewer(IInlineInvokeProxy CPH)
     {
-        var logger = new Logger(CPH, LogPrefix);
-        string userName = args["userName"].ToString();
-        var twitchTodaysViewers = CPH.GetGlobalVar<HashSet<string>>("twitchTodaysViewers", true);
+        try
+        {
+            if (!CPH.TryGetArg("userName", out string userName) || string.IsNullOrEmpty(userName))
+            {
+                CPH.LogError($"{LogPrefix} [AddFirstWordViewer] Argument 'userName' is missing or empty.");
+                return false;
+            }
+            var twitchTodaysViewers = CPH.GetGlobalVar<HashSet<string>>("twitchTodaysViewers", true);
 
-        twitchTodaysViewers.Add(userName);
-        logger.Debug("[AddFirstWordViewer] User added to todays and previous present viewers:", userName);
+            twitchTodaysViewers.Add(userName);
+            CPH.LogDebug($"{LogPrefix} [AddFirstWordViewer] User added to todays and previous present viewers: {userName}");
 
-        CPH.SetGlobalVar("twitchTodaysViewers", twitchTodaysViewers, true);
+            CPH.SetGlobalVar("twitchTodaysViewers", twitchTodaysViewers, true);
 
-        return true;
+            return true;
+        }
+        catch (Exception e)
+        {
+            CPH.LogError($"{LogPrefix} [AddFirstWordViewer] Error, {e.Message}");
+            return false;
+        }
     }
     private static void CreateViewerEvent(IInlineInvokeProxy CPH, string viewerName, string eventType)
     {
@@ -224,77 +219,5 @@ public class TwitchServiceInternal
         CPH.SetArgument("message", eventType);
         CPH.ExecuteMethod("MiniChat Method Collection", "CreateCustomEvent");
         Thread.Sleep(200); // если убрать задержку, то при большом количестве одновременно зашедших зрителей некоторые оповещения могут не отобразиться.
-    }
-}
-
-public class Logger
-{
-    private readonly IInlineInvokeProxy _cph;
-    private readonly string _prefix;
-
-    public Logger(IInlineInvokeProxy cph, string prefix)
-    {
-        _cph = cph;
-        _prefix = prefix;
-    }
-
-    public void Verbose(string message)
-    {
-        message = string.Format("{0} {1}", _prefix, message);
-        _cph.LogVerbose(message);
-    }
-
-    public void Verbose(string message, params object[] additional)
-    {
-        var finalMessage = additional.Length > 0 ? $"{message}, {string.Join(", ", additional)}" : message;
-        Verbose(finalMessage);
-    }
-
-    public void Debug(string message)
-    {
-        message = string.Format("{0} {1}", _prefix, message);
-        _cph.LogDebug(message);
-    }
-
-    public void Debug(string message, params object[] additional)
-    {
-        var finalMessage = additional.Length > 0 ? $"{message}, {string.Join(", ", additional)}" : message;
-        Debug(finalMessage);
-    }
-
-    public void Info(string message)
-    {
-        message = string.Format("{0} {1}", _prefix, message);
-        _cph.LogInfo(message);
-    }
-
-    public void Info(string message, params object[] additional)
-    {
-        var finalMessage = additional.Length > 0 ? $"{message}, {string.Join(", ", additional)}" : message;
-        Info(finalMessage);
-    }
-
-    public void Warn(string message)
-    {
-        message = string.Format("{0} {1}", _prefix, message);
-        _cph.LogWarn(message);
-    }
-
-    public void Warn(string message, params object[] additional)
-    {
-        var finalMessage = additional.Length > 0 ? $"{message}, {string.Join(", ", additional)}" : message;
-        Warn(finalMessage);
-    }
-
-    public void Error(string message)
-    {
-        message = string.Format("{0} {1}", _prefix, message);
-        _cph.LogError(message);
-    }
-
-    public void Error(string message, params object[] additional)
-    {
-        var finalMessage = additional.Length > 0 ? $"{message}, {string.Join(", ", additional)}" : message;
-        Error(finalMessage);
     }
 }
