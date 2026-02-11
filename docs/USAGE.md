@@ -105,9 +105,5 @@
   <img src="./images/usage/Twitch_Get_New_Viewers.png" alt="Экшен Get New Viewers">
 </p>
 
-<p align="center">
-  <img src="./images/usage/New_Viewers.png" alt="Пример события о новом зрителе">
-</p>
-
 - Триггер: **Twitch -> Present Viewers**
 - Примечания: требует корректной настройки **Present Viewers** и предварительной очистки списков перед началом трансляции.
