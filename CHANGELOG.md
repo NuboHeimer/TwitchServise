@@ -4,6 +4,12 @@
 
 Формат основан на [Keep a Changelog](https://keepachangelog.com/ru/1.0.0/).
 
+## [Unreleased]
+
+### Добавлено
+- **GetPaidSubscribers** — получение списка текущих платных подписчиков Twitch (включая Prime) через Twitch Helix API.
+- Формирование аргумента `twitchPaidSubscribers` в формате, аналогичном `users` из PresentViewers, c доп. полями `userId`, `displayName`, `tier`, `isGift`.
+
 ## [1.1.0] - 2025-11-02
 
 ### Добавлено
