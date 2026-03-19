@@ -10,6 +10,18 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System; //дублирование нужно, чтобы при find refs стримербот добавил System.Core.dll, необходимый для HashSet. Иначе его надо добавлять руками. Я не знаю, почему это так работает.
+using System.IO;
+using System.Net;
+using System.Text;
+
+public class TwitchSubscriberDto
+{
+    public string UserId { get; set; }
+    public string Login { get; set; }
+    public string DisplayName { get; set; }
+    public string Tier { get; set; }
+    public bool IsGift { get; set; }
+}
 
 public class CPHInline
 {
@@ -66,6 +78,11 @@ public class CPHInline
     {
         CPH.UnsetGlobalVar("twitchLastViewersNameList", true);
         return true;
+    }
+
+    public bool GetPaidSubscribers()
+    {
+        return TwitchServiceInternal.GetPaidSubscribers(CPH);
     }
 }
 
@@ -219,5 +236,355 @@ public class TwitchServiceInternal
         CPH.SetArgument("message", eventType);
         CPH.ExecuteMethod("MiniChat Method Collection", "CreateCustomEvent");
         Thread.Sleep(200); // если убрать задержку, то при большом количестве одновременно зашедших зрителей некоторые оповещения могут не отобразиться.
+    }
+
+    public static bool GetPaidSubscribers(IInlineInvokeProxy CPH)
+    {
+        try
+        {
+            var clientId = (string)CPH.TwitchClientId;
+            var oauthToken = (string)CPH.TwitchOAuthToken;
+
+            if (string.IsNullOrWhiteSpace(clientId))
+            {
+                CPH.LogError($"{LogPrefix}[GetPaidSubscribers] Twitch ClientId is empty. Check Streamer.bot Twitch connection.");
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(oauthToken))
+            {
+                CPH.LogError($"{LogPrefix}[GetPaidSubscribers] Twitch OAuth token is empty. Check Streamer.bot Twitch connection.");
+                return false;
+            }
+
+            oauthToken = NormalizeBearerToken(oauthToken);
+
+            string broadcasterId;
+            string broadcasterLogin;
+            string broadcasterDisplayName;
+
+            if (!TryGetBroadcasterInfo(CPH, clientId, oauthToken, out broadcasterId, out broadcasterLogin, out broadcasterDisplayName))
+            {
+                CPH.LogError($"{LogPrefix}[GetPaidSubscribers] Failed to resolve broadcaster info.");
+                return false;
+            }
+
+            var detailedSubs = GetAllSubscriptionsDetailed(CPH, clientId, oauthToken, broadcasterId, broadcasterLogin, broadcasterDisplayName);
+
+            // Общий список словарей (как в TopSystem)
+            var allSubs = new List<Dictionary<string, object>>();
+            // По тирам — тоже словари
+            var tier1000 = new List<Dictionary<string, object>>();
+            var tier2000 = new List<Dictionary<string, object>>();
+            var tier3000 = new List<Dictionary<string, object>>();
+
+            foreach (var sub in detailedSubs)
+            {
+                if (!sub.TryGetValue("user_login", out object loginObj))
+                    continue;
+
+                var login = loginObj as string;
+                if (string.IsNullOrEmpty(login))
+                    continue;
+
+                var dto = new TwitchSubscriberDto
+                {
+                    UserId = sub.ContainsKey("user_id") ? sub["user_id"] as string : null,
+                    Login = login,
+                    DisplayName = sub.ContainsKey("user_name") ? sub["user_name"] as string : null,
+                    Tier = sub.ContainsKey("tier") ? sub["tier"] as string : null,
+                    IsGift = sub.ContainsKey("is_gift") && sub["is_gift"] is bool b && b
+                };
+
+                var dict = new Dictionary<string, object>
+                {
+                    { "userId", dto.UserId },
+                    { "login", dto.Login },
+                    { "displayName", dto.DisplayName },
+                    { "tier", dto.Tier },
+                    { "isGift", dto.IsGift }
+                };
+
+                allSubs.Add(dict);
+
+                switch (dto.Tier)
+                {
+                    case "1000":
+                        tier1000.Add(dict);
+                        break;
+                    case "2000":
+                        tier2000.Add(dict);
+                        break;
+                    case "3000":
+                        tier3000.Add(dict);
+                        break;
+                }
+            }
+
+            // Глобальные переменные (для использования в других действиях)
+            CPH.SetGlobalVar("twitchPaidSubscribersFull", allSubs, true);
+
+            if (tier1000.Count > 0)
+            {
+                CPH.SetGlobalVar("twitchPaidSubscribersTier1000", tier1000, true);
+            }
+            else
+            {
+                // Если тира нет в ответе — очищаем возможное старое значение.
+                CPH.UnsetGlobalVar("twitchPaidSubscribersTier1000", true);
+            }
+
+            if (tier2000.Count > 0)
+            {
+                CPH.SetGlobalVar("twitchPaidSubscribersTier2000", tier2000, true);
+            }
+            else
+            {
+                CPH.UnsetGlobalVar("twitchPaidSubscribersTier2000", true);
+            }
+
+            if (tier3000.Count > 0)
+            {
+                CPH.SetGlobalVar("twitchPaidSubscribersTier3000", tier3000, true);
+            }
+            else
+            {
+                CPH.UnsetGlobalVar("twitchPaidSubscribersTier3000", true);
+            }
+
+            CPH.LogInfo($"{LogPrefix}[GetPaidSubscribers] Loaded paid subscribers: {allSubs.Count} (T1: {tier1000.Count}, T2: {tier2000.Count}, T3: {tier3000.Count})");
+            return true;
+        }
+        catch (WebException wex)
+        {
+            var details = TryReadWebExceptionBody(wex);
+            CPH.LogError($"{LogPrefix}[GetPaidSubscribers] HTTP error: {wex.Message}{(string.IsNullOrEmpty(details) ? "" : $", body: {details}")}");
+            return false;
+        }
+        catch (Exception e)
+        {
+            CPH.LogError($"{LogPrefix}[GetPaidSubscribers] Error, {e.Message}");
+            return false;
+        }
+    }
+
+    private static bool TryGetBroadcasterInfo(IInlineInvokeProxy CPH, string clientId, string bearerToken, out string id, out string login, out string displayName)
+    {
+        id = null;
+        login = null;
+        displayName = null;
+
+        var url = "https://api.twitch.tv/helix/users";
+        var json = HttpGet(url, clientId, bearerToken);
+
+        CPH.LogDebug($"{LogPrefix}[GetPaidSubscribers] /helix/users raw response: {json}");
+
+        // Очень простой парсер: ищем "id":"...", "login":"...", "display_name":"..."
+        var marker = "\"id\":\"";
+        var idx = json.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (idx < 0)
+        {
+            CPH.LogError($"{LogPrefix}[GetPaidSubscribers] Cannot find 'id' in /users response.");
+            return false;
+        }
+        idx += marker.Length;
+        var end = json.IndexOf('\"', idx);
+        if (end < 0)
+        {
+            CPH.LogError($"{LogPrefix}[GetPaidSubscribers] Unexpected /users response (unterminated 'id').");
+            return false;
+        }
+
+        id = json.Substring(idx, end - idx);
+
+        var loginMarker = "\"login\":\"";
+        var loginIdx = json.IndexOf(loginMarker, StringComparison.OrdinalIgnoreCase);
+        if (loginIdx >= 0)
+        {
+            loginIdx += loginMarker.Length;
+            var loginEnd = json.IndexOf('\"', loginIdx);
+            if (loginEnd > loginIdx)
+                login = json.Substring(loginIdx, loginEnd - loginIdx);
+        }
+
+        var nameMarker = "\"display_name\":\"";
+        var nameIdx = json.IndexOf(nameMarker, StringComparison.OrdinalIgnoreCase);
+        if (nameIdx >= 0)
+        {
+            nameIdx += nameMarker.Length;
+            var nameEnd = json.IndexOf('\"', nameIdx);
+            if (nameEnd > nameIdx)
+                displayName = json.Substring(nameIdx, nameEnd - nameIdx);
+        }
+
+        return true;
+    }
+
+    private static List<Dictionary<string, object>> GetAllSubscriptionsDetailed(IInlineInvokeProxy CPH, string clientId, string bearerToken, string broadcasterId, string broadcasterLogin, string broadcasterDisplayName)
+    {
+        var all = new List<Dictionary<string, object>>();
+        string cursor = null;
+
+        while (true)
+        {
+            var url = $"https://api.twitch.tv/helix/subscriptions?broadcaster_id={Uri.EscapeDataString(broadcasterId)}&first=100";
+            if (!string.IsNullOrEmpty(cursor))
+                url += $"&after={Uri.EscapeDataString(cursor)}";
+
+            var json = HttpGet(url, clientId, bearerToken);
+
+            CPH.LogDebug($"{LogPrefix}[GetPaidSubscribers] /helix/subscriptions raw response (page): {json}");
+
+            // Разберём каждый объект подписки и соберём словари с user_login/user_name/tier/is_gift
+            ParseSubscriptionsPage(json, all, broadcasterLogin, broadcasterDisplayName);
+
+            // Пагинация: ищем "cursor":"..."
+            cursor = null;
+            var paginationMarker = "\"cursor\":\"";
+            var pIdx = json.IndexOf(paginationMarker, StringComparison.OrdinalIgnoreCase);
+            if (pIdx >= 0)
+            {
+                pIdx += paginationMarker.Length;
+                var pEnd = json.IndexOf('"', pIdx);
+                if (pEnd > pIdx)
+                    cursor = json.Substring(pIdx, pEnd - pIdx);
+            }
+
+            if (string.IsNullOrEmpty(cursor))
+                break;
+        }
+
+        return all;
+    }
+
+    private static string NormalizeBearerToken(string token)
+    {
+        token = token.Trim();
+        if (token.StartsWith("oauth:", StringComparison.OrdinalIgnoreCase))
+            token = token.Substring("oauth:".Length);
+        return token;
+    }
+
+    private static string HttpGet(string url, string clientId, string bearerToken)
+    {
+        var request = (HttpWebRequest)WebRequest.Create(url);
+        request.Method = "GET";
+        request.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
+        request.Accept = "application/json";
+        request.Headers["Client-Id"] = clientId;
+        request.Headers["Authorization"] = $"Bearer {bearerToken}";
+
+        using (var response = (HttpWebResponse)request.GetResponse())
+        using (var stream = response.GetResponseStream())
+        using (var reader = new StreamReader(stream, Encoding.UTF8))
+        {
+            return reader.ReadToEnd();
+        }
+    }
+
+    private static void ParseSubscriptionsPage(string json, List<Dictionary<string, object>> target, string broadcasterLogin, string broadcasterDisplayName)
+    {
+        // Каждый объект подписки начинается с поля "broadcaster_id"
+        var searchMarker = "\"broadcaster_id\":\"";
+        var startIndex = 0;
+
+        while (true)
+        {
+            var idx = json.IndexOf(searchMarker, startIndex, StringComparison.OrdinalIgnoreCase);
+            if (idx < 0)
+                break;
+
+            // Найдём начало объекта '{' слева от broadcaster_id
+            var objStart = json.LastIndexOf('{', idx);
+            if (objStart < 0)
+                break;
+
+            // И конец объекта '}'
+            var endObj = json.IndexOf('}', idx);
+            if (endObj < 0)
+                break;
+
+            var obj = json.Substring(objStart, endObj - objStart + 1);
+
+            var userId = ExtractField(obj, "\"user_id\":\"");
+            var userLogin = ExtractField(obj, "\"user_login\":\"");
+            var userName = ExtractField(obj, "\"user_name\":\"");
+            var tier = ExtractField(obj, "\"tier\":\"");
+            var isGiftStr = ExtractField(obj, "\"is_gift\":");
+            bool isGift = string.Equals(isGiftStr, "true", StringComparison.OrdinalIgnoreCase);
+
+            // Пропускаем самого стримера
+            if (!string.IsNullOrEmpty(broadcasterLogin) &&
+                !string.IsNullOrEmpty(userLogin) &&
+                userLogin.Equals(broadcasterLogin, StringComparison.OrdinalIgnoreCase))
+            {
+                startIndex = endObj + 1;
+                continue;
+            }
+            if (!string.IsNullOrEmpty(broadcasterDisplayName) &&
+                !string.IsNullOrEmpty(userName) &&
+                userName.Equals(broadcasterDisplayName, StringComparison.OrdinalIgnoreCase))
+            {
+                startIndex = endObj + 1;
+                continue;
+            }
+
+            var dict = new Dictionary<string, object>();
+            if (!string.IsNullOrEmpty(userId)) dict["user_id"] = userId;
+            if (!string.IsNullOrEmpty(userLogin)) dict["user_login"] = userLogin;
+            if (!string.IsNullOrEmpty(userName)) dict["user_name"] = userName;
+            if (!string.IsNullOrEmpty(tier)) dict["tier"] = tier;
+            dict["is_gift"] = isGift;
+
+            target.Add(dict);
+
+            startIndex = endObj + 1;
+        }
+    }
+
+    private static string ExtractField(string source, string marker)
+    {
+        var idx = source.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (idx < 0)
+            return null;
+
+        idx += marker.Length;
+
+        if (marker.EndsWith("\":"))
+        {
+            // Булевые/числовые значения без кавычек до запятой или конца объекта
+            var end = source.IndexOfAny(new[] { ',', '}' }, idx);
+            if (end < 0)
+                end = source.Length;
+            return source.Substring(idx, end - idx).Trim();
+        }
+        else
+        {
+            // Строковые значения в кавычках
+            var end = source.IndexOf('"', idx);
+            if (end < 0)
+                return null;
+            return source.Substring(idx, end - idx);
+        }
+    }
+
+    private static string TryReadWebExceptionBody(WebException wex)
+    {
+        try
+        {
+            var resp = wex.Response as HttpWebResponse;
+            if (resp == null)
+                return null;
+
+            using (var stream = resp.GetResponseStream())
+            using (var reader = new StreamReader(stream, Encoding.UTF8))
+            {
+                return reader.ReadToEnd();
+            }
+        }
+        catch
+        {
+            return null;
+        }
     }
 }
