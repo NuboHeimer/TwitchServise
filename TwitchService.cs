@@ -96,7 +96,7 @@ public class TwitchServiceInternal
         {
             if (!CPH.TryGetArg("users", out object usersObj))
             {
-                CPH.LogDebug($"{LogPrefix} [GetNewViewers] Viewers not found (argument 'users' is missing).");
+                CPH.LogDebug($"{LogPrefix}[GetNewViewers] Viewers not found (argument 'users' is missing).");
                 return false;
             }
 
@@ -104,13 +104,13 @@ public class TwitchServiceInternal
 
             if (currentViewers == null || currentViewers.Count == 0)
             {
-                CPH.LogDebug($"{LogPrefix} [GetNewViewers] Viewers list is empty.");
+                CPH.LogDebug($"{LogPrefix}[GetNewViewers] Viewers list is empty.");
                 return false;
             }
 
             var twitchTodaysViewers = CPH.GetGlobalVar<HashSet<string>>("twitchTodaysViewers", true);
 
-            CPH.LogDebug($"{LogPrefix} [GetNewViewers] Try to get new viewers.");
+            CPH.LogDebug($"{LogPrefix}[GetNewViewers] Try to get new viewers.");
             foreach (var viewer in currentViewers)
             {
                 var userName = viewer["userName"].ToString();
@@ -125,7 +125,7 @@ public class TwitchServiceInternal
         }
         catch (Exception e)
         {
-            CPH.LogError($"{LogPrefix} [GetNewViewers] Error, {e.Message}");
+            CPH.LogError($"{LogPrefix}[GetNewViewers] Error, {e.Message}");
             return false;
         }
     }
@@ -139,18 +139,18 @@ public class TwitchServiceInternal
 
             if (!CPH.TryGetArg("users", out object usersObj))
             {
-                CPH.LogDebug($"{LogPrefix} [GetInOutViewers] Viewers not found (argument 'users' is missing).");
+                CPH.LogDebug($"{LogPrefix}[GetInOutViewers] Viewers not found (argument 'users' is missing).");
                 return false;
             }
 
             var currentViewers = usersObj as List<Dictionary<string, object>>;
             if (currentViewers == null || currentViewers.Count == 0)
             {
-                CPH.LogDebug($"{LogPrefix} [GetInOutViewers] Viewers list is empty.");
+                CPH.LogDebug($"{LogPrefix}[GetInOutViewers] Viewers list is empty.");
                 return false;
             }
 
-            CPH.LogDebug($"{LogPrefix} [GetInOutViewers] Try to get viewers.");
+            CPH.LogDebug($"{LogPrefix}[GetInOutViewers] Try to get viewers.");
 
             var currentViewersNames = new HashSet<string>();
 
@@ -200,7 +200,7 @@ public class TwitchServiceInternal
         }
         catch (Exception e)
         {
-            CPH.LogError($"{LogPrefix} [GetInOutViewers] Error, {e.Message}");
+            CPH.LogError($"{LogPrefix}[GetInOutViewers] Error, {e.Message}");
             return false;
         }
     }
@@ -211,13 +211,13 @@ public class TwitchServiceInternal
         {
             if (!CPH.TryGetArg("userName", out string userName) || string.IsNullOrEmpty(userName))
             {
-                CPH.LogError($"{LogPrefix} [AddFirstWordViewer] Argument 'userName' is missing or empty.");
+                CPH.LogError($"{LogPrefix}[AddFirstWordViewer] Argument 'userName' is missing or empty.");
                 return false;
             }
             var twitchTodaysViewers = CPH.GetGlobalVar<HashSet<string>>("twitchTodaysViewers", true);
 
             twitchTodaysViewers.Add(userName);
-            CPH.LogDebug($"{LogPrefix} [AddFirstWordViewer] User added to todays and previous present viewers: {userName}");
+            CPH.LogDebug($"{LogPrefix}[AddFirstWordViewer] User added to todays viewers: {userName}");
 
             CPH.SetGlobalVar("twitchTodaysViewers", twitchTodaysViewers, true);
 
@@ -225,7 +225,7 @@ public class TwitchServiceInternal
         }
         catch (Exception e)
         {
-            CPH.LogError($"{LogPrefix} [AddFirstWordViewer] Error, {e.Message}");
+            CPH.LogError($"{LogPrefix}[AddFirstWordViewer] Error, {e.Message}");
             return false;
         }
     }
@@ -270,17 +270,6 @@ public class TwitchServiceInternal
             }
 
             var detailedSubs = GetAllSubscriptionsDetailed(CPH, clientId, oauthToken, broadcasterId, broadcasterLogin, broadcasterDisplayName);
-
-            // Единый список, похожий на PresentViewers.users,
-            // но с дополнительными полями про подписку.
-            // Формат элемента:
-            // {
-            //   "userName"  : "<login>",
-            //   "userId"    : "<twitch user id>",
-            //   "tier"      : "1000" | "2000" | "3000",
-            //   "isGift"    : true/false,
-            //   "displayName": "<display name>"
-            // }
             var subscribers = new List<Dictionary<string, object>>();
 
             foreach (var sub in detailedSubs)
@@ -303,7 +292,7 @@ public class TwitchServiceInternal
 
                 var dict = new Dictionary<string, object>
                 {
-                    { "userName", dto.Login },      // совместимо с PresentViewers
+                    { "userName", dto.Login },
                     { "userId", dto.UserId },
                     { "displayName", dto.DisplayName },
                     { "tier", dto.Tier },
@@ -313,7 +302,6 @@ public class TwitchServiceInternal
                 subscribers.Add(dict);
             }
 
-            // Один аргумент со всеми данными (аналогично PresentViewers.users, но с доп. полями).
             CPH.SetArgument("twitchPaidSubscribers", subscribers);
 
             CPH.LogInfo($"{LogPrefix}[GetPaidSubscribers] Loaded paid subscribers (argument 'twitchPaidSubscribers'): {subscribers.Count}");
@@ -343,7 +331,6 @@ public class TwitchServiceInternal
 
         CPH.LogDebug($"{LogPrefix}[GetPaidSubscribers] /helix/users raw response: {json}");
 
-        // Очень простой парсер: ищем "id":"...", "login":"...", "display_name":"..."
         var marker = "\"id\":\"";
         var idx = json.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
         if (idx < 0)
@@ -399,10 +386,8 @@ public class TwitchServiceInternal
 
             CPH.LogDebug($"{LogPrefix}[GetPaidSubscribers] /helix/subscriptions raw response (page): {json}");
 
-            // Разберём каждый объект подписки и соберём словари с user_login/user_name/tier/is_gift
             ParseSubscriptionsPage(json, all, broadcasterLogin, broadcasterDisplayName);
 
-            // Пагинация: ищем "cursor":"..."
             cursor = null;
             var paginationMarker = "\"cursor\":\"";
             var pIdx = json.IndexOf(paginationMarker, StringComparison.OrdinalIgnoreCase);
@@ -448,7 +433,6 @@ public class TwitchServiceInternal
 
     private static void ParseSubscriptionsPage(string json, List<Dictionary<string, object>> target, string broadcasterLogin, string broadcasterDisplayName)
     {
-        // Каждый объект подписки начинается с поля "broadcaster_id"
         var searchMarker = "\"broadcaster_id\":\"";
         var startIndex = 0;
 
@@ -458,12 +442,10 @@ public class TwitchServiceInternal
             if (idx < 0)
                 break;
 
-            // Найдём начало объекта '{' слева от broadcaster_id
             var objStart = json.LastIndexOf('{', idx);
             if (objStart < 0)
                 break;
 
-            // И конец объекта '}'
             var endObj = json.IndexOf('}', idx);
             if (endObj < 0)
                 break;
@@ -477,7 +459,6 @@ public class TwitchServiceInternal
             var isGiftStr = ExtractField(obj, "\"is_gift\":");
             bool isGift = string.Equals(isGiftStr, "true", StringComparison.OrdinalIgnoreCase);
 
-            // Пропускаем самого стримера
             if (!string.IsNullOrEmpty(broadcasterLogin) &&
                 !string.IsNullOrEmpty(userLogin) &&
                 userLogin.Equals(broadcasterLogin, StringComparison.OrdinalIgnoreCase))
@@ -516,15 +497,12 @@ public class TwitchServiceInternal
 
         if (marker.EndsWith("\":"))
         {
-            // Булевые/числовые значения без кавычек до запятой или конца объекта
             var end = source.IndexOfAny(new[] { ',', '}' }, idx);
             if (end < 0)
                 end = source.Length;
             return source.Substring(idx, end - idx).Trim();
         }
         else
-        {
-            // Строковые значения в кавычках
             var end = source.IndexOf('"', idx);
             if (end < 0)
                 return null;
