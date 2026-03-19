@@ -13,14 +13,42 @@ using System; //дублирование нужно, чтобы при find refs
 using System.IO;
 using System.Net;
 using System.Text;
+using Newtonsoft.Json;
 
-public class TwitchSubscriberDto
+
+public class TwitchUsersResponse
 {
-    public string UserId { get; set; }
-    public string Login { get; set; }
-    public string DisplayName { get; set; }
-    public string Tier { get; set; }
-    public bool IsGift { get; set; }
+    public List<TwitchUser> data { get; set; }
+}
+
+public class TwitchUser
+{
+    public string id { get; set; }
+    public string login { get; set; }
+    public string display_name { get; set; }
+}
+
+public class TwitchSubscriptionsResponse
+{
+    public List<TwitchSubscription> data { get; set; }
+    public TwitchPagination pagination { get; set; }
+}
+
+public class TwitchSubscription
+{
+    public string broadcaster_id { get; set; }
+    public string broadcaster_login { get; set; }
+    public string broadcaster_name { get; set; }
+    public string user_id { get; set; }
+    public string user_login { get; set; }
+    public string user_name { get; set; }
+    public string tier { get; set; }
+    public bool is_gift { get; set; }
+}
+
+public class TwitchPagination
+{
+    public string cursor { get; set; }
 }
 
 public class CPHInline
@@ -281,22 +309,13 @@ public class TwitchServiceInternal
                 if (string.IsNullOrEmpty(login))
                     continue;
 
-                var dto = new TwitchSubscriberDto
-                {
-                    UserId = sub.ContainsKey("user_id") ? sub["user_id"] as string : null,
-                    Login = login,
-                    DisplayName = sub.ContainsKey("user_name") ? sub["user_name"] as string : null,
-                    Tier = sub.ContainsKey("tier") ? sub["tier"] as string : null,
-                    IsGift = sub.ContainsKey("is_gift") && sub["is_gift"] is bool b && b
-                };
-
                 var dict = new Dictionary<string, object>
                 {
-                    { "userName", dto.Login },
-                    { "userId", dto.UserId },
-                    { "displayName", dto.DisplayName },
-                    { "tier", dto.Tier },
-                    { "isGift", dto.IsGift }
+                    { "userName", login },
+                    { "userId", sub.ContainsKey("user_id") ? sub["user_id"] as string : null },
+                    { "displayName", sub.ContainsKey("user_name") ? sub["user_name"] as string : null },
+                    { "tier", sub.ContainsKey("tier") ? sub["tier"] as string : null },
+                    { "isGift", sub.ContainsKey("is_gift") && sub["is_gift"] is bool b && b }
                 };
 
                 subscribers.Add(dict);
@@ -331,41 +350,22 @@ public class TwitchServiceInternal
 
         CPH.LogDebug($"{LogPrefix}[GetPaidSubscribers] /helix/users raw response: {json}");
 
-        var marker = "\"id\":\"";
-        var idx = json.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
-        if (idx < 0)
+        var users = JsonConvert.DeserializeObject<TwitchUsersResponse>(json);
+        if (users?.data == null || users.data.Count == 0)
         {
-            CPH.LogError($"{LogPrefix}[GetPaidSubscribers] Cannot find 'id' in /users response.");
-            return false;
-        }
-        idx += marker.Length;
-        var end = json.IndexOf('\"', idx);
-        if (end < 0)
-        {
-            CPH.LogError($"{LogPrefix}[GetPaidSubscribers] Unexpected /users response (unterminated 'id').");
+            CPH.LogError($"{LogPrefix}[GetPaidSubscribers] /users response does not contain broadcaster data.");
             return false;
         }
 
-        id = json.Substring(idx, end - idx);
+        var me = users.data[0];
+        id = me.id;
+        login = me.login;
+        displayName = me.display_name;
 
-        var loginMarker = "\"login\":\"";
-        var loginIdx = json.IndexOf(loginMarker, StringComparison.OrdinalIgnoreCase);
-        if (loginIdx >= 0)
+        if (string.IsNullOrEmpty(id))
         {
-            loginIdx += loginMarker.Length;
-            var loginEnd = json.IndexOf('\"', loginIdx);
-            if (loginEnd > loginIdx)
-                login = json.Substring(loginIdx, loginEnd - loginIdx);
-        }
-
-        var nameMarker = "\"display_name\":\"";
-        var nameIdx = json.IndexOf(nameMarker, StringComparison.OrdinalIgnoreCase);
-        if (nameIdx >= 0)
-        {
-            nameIdx += nameMarker.Length;
-            var nameEnd = json.IndexOf('\"', nameIdx);
-            if (nameEnd > nameIdx)
-                displayName = json.Substring(nameIdx, nameEnd - nameIdx);
+            CPH.LogError($"{LogPrefix}[GetPaidSubscribers] /users response has empty 'id'.");
+            return false;
         }
 
         return true;
@@ -386,19 +386,36 @@ public class TwitchServiceInternal
 
             CPH.LogDebug($"{LogPrefix}[GetPaidSubscribers] /helix/subscriptions raw response (page): {json}");
 
-            ParseSubscriptionsPage(json, all, broadcasterLogin, broadcasterDisplayName);
-
-            cursor = null;
-            var paginationMarker = "\"cursor\":\"";
-            var pIdx = json.IndexOf(paginationMarker, StringComparison.OrdinalIgnoreCase);
-            if (pIdx >= 0)
+            var page = JsonConvert.DeserializeObject<TwitchSubscriptionsResponse>(json);
+            if (page?.data != null)
             {
-                pIdx += paginationMarker.Length;
-                var pEnd = json.IndexOf('"', pIdx);
-                if (pEnd > pIdx)
-                    cursor = json.Substring(pIdx, pEnd - pIdx);
+                foreach (var sub in page.data)
+                {
+                    if (!string.IsNullOrEmpty(broadcasterLogin) &&
+                        !string.IsNullOrEmpty(sub.user_login) &&
+                        sub.user_login.Equals(broadcasterLogin, StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+                    if (!string.IsNullOrEmpty(broadcasterDisplayName) &&
+                        !string.IsNullOrEmpty(sub.user_name) &&
+                        sub.user_name.Equals(broadcasterDisplayName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    var dict = new Dictionary<string, object>();
+                    if (!string.IsNullOrEmpty(sub.user_id)) dict["user_id"] = sub.user_id;
+                    if (!string.IsNullOrEmpty(sub.user_login)) dict["user_login"] = sub.user_login;
+                    if (!string.IsNullOrEmpty(sub.user_name)) dict["user_name"] = sub.user_name;
+                    if (!string.IsNullOrEmpty(sub.tier)) dict["tier"] = sub.tier;
+                    dict["is_gift"] = sub.is_gift;
+
+                    all.Add(dict);
+                }
             }
 
+            cursor = page?.pagination?.cursor;
             if (string.IsNullOrEmpty(cursor))
                 break;
         }
@@ -428,85 +445,6 @@ public class TwitchServiceInternal
         using (var reader = new StreamReader(stream, Encoding.UTF8))
         {
             return reader.ReadToEnd();
-        }
-    }
-
-    private static void ParseSubscriptionsPage(string json, List<Dictionary<string, object>> target, string broadcasterLogin, string broadcasterDisplayName)
-    {
-        var searchMarker = "\"broadcaster_id\":\"";
-        var startIndex = 0;
-
-        while (true)
-        {
-            var idx = json.IndexOf(searchMarker, startIndex, StringComparison.OrdinalIgnoreCase);
-            if (idx < 0)
-                break;
-
-            var objStart = json.LastIndexOf('{', idx);
-            if (objStart < 0)
-                break;
-
-            var endObj = json.IndexOf('}', idx);
-            if (endObj < 0)
-                break;
-
-            var obj = json.Substring(objStart, endObj - objStart + 1);
-
-            var userId = ExtractField(obj, "\"user_id\":\"");
-            var userLogin = ExtractField(obj, "\"user_login\":\"");
-            var userName = ExtractField(obj, "\"user_name\":\"");
-            var tier = ExtractField(obj, "\"tier\":\"");
-            var isGiftStr = ExtractField(obj, "\"is_gift\":");
-            bool isGift = string.Equals(isGiftStr, "true", StringComparison.OrdinalIgnoreCase);
-
-            if (!string.IsNullOrEmpty(broadcasterLogin) &&
-                !string.IsNullOrEmpty(userLogin) &&
-                userLogin.Equals(broadcasterLogin, StringComparison.OrdinalIgnoreCase))
-            {
-                startIndex = endObj + 1;
-                continue;
-            }
-            if (!string.IsNullOrEmpty(broadcasterDisplayName) &&
-                !string.IsNullOrEmpty(userName) &&
-                userName.Equals(broadcasterDisplayName, StringComparison.OrdinalIgnoreCase))
-            {
-                startIndex = endObj + 1;
-                continue;
-            }
-
-            var dict = new Dictionary<string, object>();
-            if (!string.IsNullOrEmpty(userId)) dict["user_id"] = userId;
-            if (!string.IsNullOrEmpty(userLogin)) dict["user_login"] = userLogin;
-            if (!string.IsNullOrEmpty(userName)) dict["user_name"] = userName;
-            if (!string.IsNullOrEmpty(tier)) dict["tier"] = tier;
-            dict["is_gift"] = isGift;
-
-            target.Add(dict);
-
-            startIndex = endObj + 1;
-        }
-    }
-
-    private static string ExtractField(string source, string marker)
-    {
-        var idx = source.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
-        if (idx < 0)
-            return null;
-
-        idx += marker.Length;
-
-        if (marker.EndsWith("\":"))
-        {
-            var end = source.IndexOfAny(new[] { ',', '}' }, idx);
-            if (end < 0)
-                end = source.Length;
-            return source.Substring(idx, end - idx).Trim();
-        }
-        else
-            var end = source.IndexOf('"', idx);
-            if (end < 0)
-                return null;
-            return source.Substring(idx, end - idx);
         }
     }
 
