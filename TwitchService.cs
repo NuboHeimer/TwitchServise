@@ -271,12 +271,17 @@ public class TwitchServiceInternal
 
             var detailedSubs = GetAllSubscriptionsDetailed(CPH, clientId, oauthToken, broadcasterId, broadcasterLogin, broadcasterDisplayName);
 
-            // Общий список словарей (как в TopSystem)
-            var allSubs = new List<Dictionary<string, object>>();
-            // По тирам — тоже словари
-            var tier1000 = new List<Dictionary<string, object>>();
-            var tier2000 = new List<Dictionary<string, object>>();
-            var tier3000 = new List<Dictionary<string, object>>();
+            // Единый список, похожий на PresentViewers.users,
+            // но с дополнительными полями про подписку.
+            // Формат элемента:
+            // {
+            //   "userName"  : "<login>",
+            //   "userId"    : "<twitch user id>",
+            //   "tier"      : "1000" | "2000" | "3000",
+            //   "isGift"    : true/false,
+            //   "displayName": "<display name>"
+            // }
+            var subscribers = new List<Dictionary<string, object>>();
 
             foreach (var sub in detailedSubs)
             {
@@ -298,61 +303,20 @@ public class TwitchServiceInternal
 
                 var dict = new Dictionary<string, object>
                 {
+                    { "userName", dto.Login },      // совместимо с PresentViewers
                     { "userId", dto.UserId },
-                    { "login", dto.Login },
                     { "displayName", dto.DisplayName },
                     { "tier", dto.Tier },
                     { "isGift", dto.IsGift }
                 };
 
-                allSubs.Add(dict);
-
-                switch (dto.Tier)
-                {
-                    case "1000":
-                        tier1000.Add(dict);
-                        break;
-                    case "2000":
-                        tier2000.Add(dict);
-                        break;
-                    case "3000":
-                        tier3000.Add(dict);
-                        break;
-                }
+                subscribers.Add(dict);
             }
 
-            // Глобальные переменные (для использования в других действиях)
-            CPH.SetGlobalVar("twitchPaidSubscribersFull", allSubs, true);
+            // Один аргумент со всеми данными (аналогично PresentViewers.users, но с доп. полями).
+            CPH.SetArgument("twitchPaidSubscribers", subscribers);
 
-            if (tier1000.Count > 0)
-            {
-                CPH.SetGlobalVar("twitchPaidSubscribersTier1000", tier1000, true);
-            }
-            else
-            {
-                // Если тира нет в ответе — очищаем возможное старое значение.
-                CPH.UnsetGlobalVar("twitchPaidSubscribersTier1000", true);
-            }
-
-            if (tier2000.Count > 0)
-            {
-                CPH.SetGlobalVar("twitchPaidSubscribersTier2000", tier2000, true);
-            }
-            else
-            {
-                CPH.UnsetGlobalVar("twitchPaidSubscribersTier2000", true);
-            }
-
-            if (tier3000.Count > 0)
-            {
-                CPH.SetGlobalVar("twitchPaidSubscribersTier3000", tier3000, true);
-            }
-            else
-            {
-                CPH.UnsetGlobalVar("twitchPaidSubscribersTier3000", true);
-            }
-
-            CPH.LogInfo($"{LogPrefix}[GetPaidSubscribers] Loaded paid subscribers: {allSubs.Count} (T1: {tier1000.Count}, T2: {tier2000.Count}, T3: {tier3000.Count})");
+            CPH.LogInfo($"{LogPrefix}[GetPaidSubscribers] Loaded paid subscribers (argument 'twitchPaidSubscribers'): {subscribers.Count}");
             return true;
         }
         catch (WebException wex)
