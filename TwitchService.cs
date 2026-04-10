@@ -8,6 +8,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Threading;
 using System; //дублирование нужно, чтобы при find refs стримербот добавил System.Core.dll, необходимый для HashSet. Иначе его надо добавлять руками. Я не знаю, почему это так работает.
 using System.IO;
@@ -49,6 +50,45 @@ public class TwitchSubscription
 public class TwitchPagination
 {
     public string cursor { get; set; }
+}
+
+public class TwitchStreamsResponse
+{
+    public List<TwitchStreamData> data { get; set; }
+}
+
+public class TwitchStreamData
+{
+    public string id { get; set; }
+    public string user_id { get; set; }
+    public string user_login { get; set; }
+    public string user_name { get; set; }
+    public string game_id { get; set; }
+    public string game_name { get; set; }
+    public string type { get; set; }
+    public string title { get; set; }
+    public List<string> tags { get; set; }
+    public int viewer_count { get; set; }
+    public string started_at { get; set; }
+    public string language { get; set; }
+    public string thumbnail_url { get; set; }
+}
+
+public class TwitchChannelsResponse
+{
+    public List<TwitchChannelData> data { get; set; }
+}
+
+public class TwitchChannelData
+{
+    public string broadcaster_id { get; set; }
+    public string broadcaster_login { get; set; }
+    public string broadcaster_name { get; set; }
+    public string broadcaster_language { get; set; }
+    public string game_id { get; set; }
+    public string game_name { get; set; }
+    public string title { get; set; }
+    public List<string> tags { get; set; }
 }
 
 public class CPHInline
@@ -111,6 +151,46 @@ public class CPHInline
     public bool GetPaidSubscribers()
     {
         return TwitchServiceInternal.GetPaidSubscribers(CPH);
+    }
+
+    public bool GetTwitchStreamInfo()
+    {
+        return TwitchServiceInternal.GetTwitchStreamInfo(CPH);
+    }
+
+    public bool GetTwitchStreamIsLive()
+    {
+        return TwitchServiceInternal.GetTwitchStreamIsLive(CPH);
+    }
+
+    public bool GetTwitchStreamStatus()
+    {
+        return TwitchServiceInternal.GetTwitchStreamStatus(CPH);
+    }
+
+    public bool GetTwitchStreamGameName()
+    {
+        return TwitchServiceInternal.GetTwitchStreamGameName(CPH);
+    }
+
+    public bool GetTwitchStreamGameId()
+    {
+        return TwitchServiceInternal.GetTwitchStreamGameId(CPH);
+    }
+
+    public bool GetTwitchStreamViewerCount()
+    {
+        return TwitchServiceInternal.GetTwitchStreamViewerCount(CPH);
+    }
+
+    public bool GetTwitchStreamStartedAt()
+    {
+        return TwitchServiceInternal.GetTwitchStreamStartedAt(CPH);
+    }
+
+    public bool GetTwitchStreamTags()
+    {
+        return TwitchServiceInternal.GetTwitchStreamTags(CPH);
     }
 }
 
@@ -270,22 +350,8 @@ public class TwitchServiceInternal
     {
         try
         {
-            var clientId = (string)CPH.TwitchClientId;
-            var oauthToken = (string)CPH.TwitchOAuthToken;
-
-            if (string.IsNullOrWhiteSpace(clientId))
-            {
-                CPH.LogError($"{LogPrefix}[GetPaidSubscribers] Twitch ClientId is empty. Check Streamer.bot Twitch connection.");
+            if (!TryGetTwitchApiContext(CPH, out var clientId, out var oauthToken))
                 return false;
-            }
-
-            if (string.IsNullOrWhiteSpace(oauthToken))
-            {
-                CPH.LogError($"{LogPrefix}[GetPaidSubscribers] Twitch OAuth token is empty. Check Streamer.bot Twitch connection.");
-                return false;
-            }
-
-            oauthToken = NormalizeBearerToken(oauthToken);
 
             string broadcasterId;
             string broadcasterLogin;
@@ -337,6 +403,250 @@ public class TwitchServiceInternal
             CPH.LogError($"{LogPrefix}[GetPaidSubscribers] Error, {e.Message}");
             return false;
         }
+    }
+
+    private static bool TryGetTwitchApiContext(IInlineInvokeProxy CPH, out string clientId, out string oauthToken)
+    {
+        clientId = (string)CPH.TwitchClientId;
+        oauthToken = (string)CPH.TwitchOAuthToken;
+
+        if (string.IsNullOrWhiteSpace(clientId))
+        {
+            CPH.LogError($"{LogPrefix}[Twitch API] Twitch ClientId is empty. Check Streamer.bot Twitch connection.");
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(oauthToken))
+        {
+            CPH.LogError($"{LogPrefix}[Twitch API] Twitch OAuth token is empty. Check Streamer.bot Twitch connection.");
+            return false;
+        }
+
+        oauthToken = NormalizeBearerToken(oauthToken);
+        return true;
+    }
+
+    public static bool GetTwitchStreamInfo(IInlineInvokeProxy CPH)
+    {
+        try
+        {
+            if (!TryGetTwitchApiContext(CPH, out var clientId, out var oauthToken))
+                return false;
+
+            if (!TryGetBroadcasterInfo(CPH, clientId, oauthToken, out var broadcasterId, out _, out _))
+            {
+                CPH.LogError($"{LogPrefix}[Stream] Failed to resolve broadcaster info.");
+                return false;
+            }
+
+            var stream = FetchLiveStreamOrNull(CPH, clientId, oauthToken, broadcasterId);
+            var channel = stream == null ? FetchChannelInfoOrNull(CPH, clientId, oauthToken, broadcasterId) : null;
+            SetAllStreamerBotStreamArguments(CPH, stream, channel);
+            CPH.LogInfo(stream != null
+                ? $"{LogPrefix}[Stream] Arguments updated from /helix/streams (isLive=true)."
+                : channel != null
+                    ? $"{LogPrefix}[Stream] Offline: isLive=false, title/category/tags from /helix/channels."
+                    : $"{LogPrefix}[Stream] Offline: isLive=false, /helix/channels failed or empty.");
+            return true;
+        }
+        catch (WebException wex)
+        {
+            var details = TryReadWebExceptionBody(wex);
+            CPH.LogError($"{LogPrefix}[Stream] HTTP error: {wex.Message}{(string.IsNullOrEmpty(details) ? "" : $", body: {details}")}");
+            return false;
+        }
+        catch (Exception e)
+        {
+            CPH.LogError($"{LogPrefix}[Stream] Error, {e.Message}");
+            return false;
+        }
+    }
+
+    public static bool GetTwitchStreamIsLive(IInlineInvokeProxy CPH)
+    {
+        return RunStreamQuery(CPH, (s, _) => CPH.SetArgument("isLive", s != null));
+    }
+
+    public static bool GetTwitchStreamStatus(IInlineInvokeProxy CPH)
+    {
+        return RunStreamQuery(CPH, (s, c) =>
+        {
+            var title = s != null ? (s.title ?? "") : (c != null ? (c.title ?? "") : null);
+            if (title == null) return;
+            CPH.SetArgument("status", title);
+        });
+    }
+
+    public static bool GetTwitchStreamGameName(IInlineInvokeProxy CPH)
+    {
+        return RunStreamQuery(CPH, (s, c) =>
+        {
+            var gn = s != null ? (s.game_name ?? "") : (c != null ? (c.game_name ?? "") : null);
+            if (gn == null) return;
+            CPH.SetArgument("gameName", gn);
+            CPH.SetArgument("game", gn);
+        });
+    }
+
+    public static bool GetTwitchStreamGameId(IInlineInvokeProxy CPH)
+    {
+        return RunStreamQuery(CPH, (s, c) =>
+        {
+            var gid = s != null ? (s.game_id ?? "") : (c != null ? (c.game_id ?? "") : null);
+            if (gid == null) return;
+            CPH.SetArgument("gameId", gid);
+        });
+    }
+
+    public static bool GetTwitchStreamViewerCount(IInlineInvokeProxy CPH)
+    {
+        return RunStreamQuery(CPH, (s, _) =>
+        {
+            if (s == null) return;
+            CPH.SetArgument("viewerCount", s.viewer_count);
+        });
+    }
+
+    public static bool GetTwitchStreamStartedAt(IInlineInvokeProxy CPH)
+    {
+        return RunStreamQuery(CPH, (s, _) =>
+        {
+            if (s == null) return;
+            SetStartedAtArgument(CPH, s.started_at);
+        });
+    }
+
+    public static bool GetTwitchStreamTags(IInlineInvokeProxy CPH)
+    {
+        return RunStreamQuery(CPH, (s, c) =>
+        {
+            if (s != null)
+                SetTagArguments(CPH, s.tags);
+            else if (c != null)
+                SetTagArguments(CPH, c.tags);
+        });
+    }
+
+    private static bool RunStreamQuery(IInlineInvokeProxy CPH, Action<TwitchStreamData, TwitchChannelData> apply)
+    {
+        try
+        {
+            if (!TryGetTwitchApiContext(CPH, out var clientId, out var oauthToken))
+                return false;
+
+            if (!TryGetBroadcasterInfo(CPH, clientId, oauthToken, out var broadcasterId, out _, out _))
+            {
+                CPH.LogError($"{LogPrefix}[Stream] Failed to resolve broadcaster info.");
+                return false;
+            }
+
+            var stream = FetchLiveStreamOrNull(CPH, clientId, oauthToken, broadcasterId);
+            var channel = stream == null ? FetchChannelInfoOrNull(CPH, clientId, oauthToken, broadcasterId) : null;
+            apply(stream, channel);
+            return true;
+        }
+        catch (WebException wex)
+        {
+            var details = TryReadWebExceptionBody(wex);
+            CPH.LogError($"{LogPrefix}[Stream] HTTP error: {wex.Message}{(string.IsNullOrEmpty(details) ? "" : $", body: {details}")}");
+            return false;
+        }
+        catch (Exception e)
+        {
+            CPH.LogError($"{LogPrefix}[Stream] Error, {e.Message}");
+            return false;
+        }
+    }
+
+    private static TwitchStreamData FetchLiveStreamOrNull(IInlineInvokeProxy CPH, string clientId, string bearerToken, string broadcasterId)
+    {
+        var url = $"https://api.twitch.tv/helix/streams?user_id={Uri.EscapeDataString(broadcasterId)}";
+        var json = HttpGet(url, clientId, bearerToken);
+
+        CPH.LogDebug($"{LogPrefix}[Stream] /helix/streams raw response: {json}");
+
+        var resp = JsonConvert.DeserializeObject<TwitchStreamsResponse>(json);
+        if (resp?.data == null || resp.data.Count == 0)
+            return null;
+
+        return resp.data[0];
+    }
+
+    private static TwitchChannelData FetchChannelInfoOrNull(IInlineInvokeProxy CPH, string clientId, string bearerToken, string broadcasterId)
+    {
+        try
+        {
+            var url = $"https://api.twitch.tv/helix/channels?broadcaster_id={Uri.EscapeDataString(broadcasterId)}";
+            var json = HttpGet(url, clientId, bearerToken);
+
+            CPH.LogDebug($"{LogPrefix}[Stream] /helix/channels raw response: {json}");
+
+            var resp = JsonConvert.DeserializeObject<TwitchChannelsResponse>(json);
+            if (resp?.data == null || resp.data.Count == 0)
+                return null;
+
+            return resp.data[0];
+        }
+        catch (WebException wex)
+        {
+            var details = TryReadWebExceptionBody(wex);
+            CPH.LogInfo($"{LogPrefix}[Stream] /helix/channels failed: {wex.Message}{(string.IsNullOrEmpty(details) ? "" : $", body: {details}")}");
+            return null;
+        }
+    }
+
+    private static void SetAllStreamerBotStreamArguments(IInlineInvokeProxy CPH, TwitchStreamData stream, TwitchChannelData channel)
+    {
+        var live = stream != null;
+        CPH.SetArgument("isLive", live);
+
+        if (live)
+        {
+            CPH.SetArgument("status", stream.title ?? "");
+            var gameName = stream.game_name ?? "";
+            CPH.SetArgument("gameName", gameName);
+            CPH.SetArgument("game", gameName);
+            CPH.SetArgument("gameId", stream.game_id ?? "");
+            CPH.SetArgument("viewerCount", stream.viewer_count);
+            SetStartedAtArgument(CPH, stream.started_at);
+            SetTagArguments(CPH, stream.tags);
+            return;
+        }
+
+        if (channel != null)
+        {
+            CPH.SetArgument("status", channel.title ?? "");
+            var gameName = channel.game_name ?? "";
+            CPH.SetArgument("gameName", gameName);
+            CPH.SetArgument("game", gameName);
+            CPH.SetArgument("gameId", channel.game_id ?? "");
+            SetTagArguments(CPH, channel.tags);
+        }
+    }
+
+    private static void SetStartedAtArgument(IInlineInvokeProxy CPH, string startedAtIso)
+    {
+        if (string.IsNullOrEmpty(startedAtIso))
+        {
+            CPH.SetArgument("startedAt", "");
+            return;
+        }
+
+        if (DateTime.TryParse(startedAtIso, null, DateTimeStyles.RoundtripKind, out var dt))
+            CPH.SetArgument("startedAt", dt);
+        else
+            CPH.SetArgument("startedAt", startedAtIso);
+    }
+
+    private static void SetTagArguments(IInlineInvokeProxy CPH, List<string> tags)
+    {
+        var list = tags ?? new List<string>();
+        CPH.SetArgument("tags", list);
+        CPH.SetArgument("tagCount", list.Count);
+        CPH.SetArgument("tagsDelimited", string.Join(", ", list));
+
+        for (var i = 0; i < list.Count; i++)
+            CPH.SetArgument("tag" + i, list[i] ?? "");
     }
 
     private static bool TryGetBroadcasterInfo(IInlineInvokeProxy CPH, string clientId, string bearerToken, out string id, out string login, out string displayName)
