@@ -7,8 +7,11 @@
 ## [Unreleased]
 
 ### Добавлено
-- **GetPaidSubscribers** — получение списка текущих платных подписчиков Twitch (включая Prime) через Twitch Helix API.
-- Формирование аргумента `twitchPaidSubscribers` в формате, аналогичном `users` из PresentViewers, c доп. полями `userId`, `displayName`, `tier`, `isGift`.
+- **GetPaidSubscribers** — список текущих платных подписчиков Twitch (включая Prime) через `GET /helix/subscriptions`; аргумент `twitchPaidSubscribers` в формате, согласованном с `users` из Present Viewers, с полями `userId`, `displayName`, `tier`, `isGift`.
+- Данные эфира и канала через Helix: **GetTwitchStreamInfo** (всё за один проход по API при живом эфире) и точечные методы **GetTwitchStreamIsLive**, **GetTwitchStreamStatus**, **GetTwitchStreamGameName**, **GetTwitchStreamGameId**, **GetTwitchStreamViewerCount**, **GetTwitchStreamStartedAt**, **GetTwitchStreamTags**.
+- При эфире: `GET /helix/streams`; при офлайне: дополнительно `GET /helix/channels` для заголовка, категории и тегов из настроек канала.
+- Аргументы Streamer.bot: `status`, `gameName`, `game`, `gameId`, `viewerCount`, `isLive`, `startedAt`, `tags`, `tagCount`, `tagsDelimited`, `tag0`… (только для реальных тегов, без заполнения пустыми слотами).
+- Общая проверка Client ID, OAuth и нормализация токена: **TryGetTwitchApiContext** (используется и подписчиками, и стримом); сообщения об ошибках учётных данных с тегом `[Twitch API]`.
 
 ## [1.1.0] - 2025-11-02
 
